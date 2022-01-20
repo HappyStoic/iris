@@ -1,0 +1,62 @@
+version: '3.8'
+
+x-peer: &default-peer
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment:
+    - DO_SOMETHING=1
+    - GOLOG_LOG_LEVEL=p2pnetwork=debug
+  command:
+    - ./peercli
+    - --conf
+    - ./vol/config.yaml
+
+services:
+  peer1:
+    <<: *default-peer
+    volumes:
+      - ./dev/peer1:/usr/p2pnetwork/vol
+    networks:
+      p2pnetwork:
+        ipv4_address: 192.168.0.10
+
+  peer2:
+    <<: *default-peer
+    volumes:
+      - ./dev/peer2:/usr/p2pnetwork/vol
+    depends_on:
+      - peer1
+    networks:
+      p2pnetwork:
+        ipv4_address: 192.168.0.20
+
+  peer3:
+    <<: *default-peer
+    volumes:
+      - ./dev/peer3:/usr/p2pnetwork/vol
+    depends_on:
+      - peer1
+      - peer2
+    networks:
+      p2pnetwork:
+        ipv4_address: 192.168.0.30
+#
+#  peer4:
+#    <<: *default-peer
+#    volumes:
+#      - ./dev/peer4:/usr/p2pnetwork/vol
+#    depends_on:
+#      - peer1
+#      - peer2
+#      - peer3
+#    networks:
+#      p2pnetwork:
+#        ipv4_address: 192.168.0.40
+
+networks:
+  p2pnetwork:
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.0.0/24

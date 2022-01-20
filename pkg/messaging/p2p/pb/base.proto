@@ -1,0 +1,22 @@
+syntax = "proto3";
+package pb;
+option go_package = "./pkg/messaging/p2p/pb";
+
+// designed to be shared between all p2p protocols
+message MetaData {
+  string id = 1;           // allows requesters to use request data when processing a response
+  int64 timestamp = 2;     // unix time
+
+  PeerIdentity originalSender = 3;
+  bytes signature = 4; // signature of message data + method specific data by message original sender.
+}
+
+message PeerIdentity {
+  string nodeId = 1;                       // id of original node
+  bytes  nodePubKey = 2;                   // Authoring node Secp256k1 public key (32bytes) - protobufs serialized
+  repeated Organisation organisations = 3; // signatures of organisations belonging to sender
+}
+
+message Organisation {
+  // TODO fill in
+}

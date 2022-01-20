@@ -1,0 +1,11 @@
+IdentityConfig:
+  GenerateNewKey: true
+#  LoadKeyFromFile: file.key
+  SaveKeyToFile: file.key
+
+Server:
+  port: 9000
+
+PeerDiscovery:
+  ListOfMultiAddresses:
+   - "/ip4/192.168.88.43/udp/9001/quic 12D3KooWJTtVMiMQTbTVL2PCJyW1St85EMR9fegn4twPJQSiwNwb"

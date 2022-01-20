@@ -1,0 +1,13 @@
+# This peer has connection string:
+# /ip4/192.168.0.20/udp/9002/quic 12D3KooWLDCxxP6PAKG6NUYWs16VbSZhQNHY361otSmauvVnXV4g
+
+IdentityConfig:
+  GenerateNewKey: false
+  LoadKeyFromFile: ./vol/key.priv
+
+Server:
+  port: 9002
+
+PeerDiscovery:
+  ListOfMultiAddresses:
+    - "/ip4/192.168.0.10/udp/9001/quic 12D3KooWNxiCsZFyUFpLFNKDLEQDUK36myifqufnnveK1jycMoJ8"

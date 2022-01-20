@@ -1,0 +1,11 @@
+syntax = "proto3";
+package pb;
+option go_package = "./pkg/messaging/p2p/pb";
+
+import  "base.proto";
+
+message Alarm {
+  MetaData metadata = 1;
+
+  string message = 2;
+}
