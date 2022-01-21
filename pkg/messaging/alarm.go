@@ -1,11 +1,11 @@
-package p2p
+package messaging
 
 import (
 	"github.com/golang/protobuf/proto"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"happystoic/p2pnetwork/pkg/messaging/p2p/pb"
+	"happystoic/p2pnetwork/pkg/messaging/pb"
 )
 
 var log = logging.Logger("p2pnetwork")
@@ -15,18 +15,25 @@ const alarmMessage = "/alarm/0.0.1"
 
 // AlarmProtocol type
 type AlarmProtocol struct {
-	*ProtoUtils
+	*MessageUtils
 }
 
-func NewAlarmProtocol(pu *ProtoUtils) *AlarmProtocol {
-	ap := &AlarmProtocol{pu}
+func NewAlarmProtocol(mu *MessageUtils) *AlarmProtocol {
+	ap := &AlarmProtocol{mu}
 
-	ap.host.SetStreamHandler(alarmMessage, ap.onAlarmMessage)
+	ap.host.SetStreamHandler(alarmMessage, ap.onP2PAlarmMessage)
+	ap.redisClient.subscribeCallback(ap.redisClient.channels.Tl2nlAlarmChannel, ap.onRedisAlarmMessage)
 	return ap
 }
 
-// onAlarmMessage receives an alarm, sends it to local TL and forwards it further into the p2p network
-func (ap *AlarmProtocol) onAlarmMessage(s network.Stream) {
+func (ap *AlarmProtocol) onRedisAlarmMessage(message string) {
+	// TODO deserialize first somehow the message?
+	log.Debugf("received alarm message from TL: %s", message)
+	ap.InitiateP2PAlarm(message)
+}
+
+// onP2PAlarmMessage receives an alarm, sends it to local TL and forwards it further into the p2p network
+func (ap *AlarmProtocol) onP2PAlarmMessage(s network.Stream) {
 	alarm := &pb.Alarm{}
 
 	err := ap.deserializeMessageFromStream(s, alarm)
@@ -54,17 +61,20 @@ func (ap *AlarmProtocol) onAlarmMessage(s network.Stream) {
 		return
 	}
 
-	// TODO: forward message to trust layer
-	// tbd
+	// TODO: serialize message somehow to trust layer?
+	err = ap.redisClient.publishMessage(ap.redisClient.channels.Nl2tlAlarmChannel, alarm.Message)
+	if err != nil {
+		log.Errorf("Error passing alarm to trust layer: %s", err)
+	}
 
 	// Forward alarm msg to other connected peers
-	ap.ForwardAlarm(alarm, s.Conn().RemotePeer())
+	ap.ForwardP2PAlarm(alarm, s.Conn().RemotePeer())
 
-	log.Debugf("onAlarmMessage handler successfully ended")
+	log.Debugf("onP2PAlarmMessage handler successfully ended")
 }
 
-// InitiateAlarm initiates an alarm message and sends it to all connected peers
-func (ap *AlarmProtocol) InitiateAlarm(message string) {
+// InitiateP2PAlarm initiates an alarm message and sends it to all connected peers
+func (ap *AlarmProtocol) InitiateP2PAlarm(message string) {
 	msgMetaData, err := ap.NewProtoMetaData()
 	if err != nil {
 		log.Errorf("Error generating new proto metadata: %s", err)
@@ -92,7 +102,7 @@ func (ap *AlarmProtocol) InitiateAlarm(message string) {
 		}
 	}
 }
-func (ap *AlarmProtocol) ForwardAlarm(protoMsg proto.Message, senderID peer.ID) {
+func (ap *AlarmProtocol) ForwardP2PAlarm(protoMsg proto.Message, senderID peer.ID) {
 	for _, pid := range ap.ConnectedPeers() {
 		if pid == senderID {
 			continue // do not send it back

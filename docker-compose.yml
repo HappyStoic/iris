@@ -13,10 +13,18 @@ x-peer: &default-peer
     - ./vol/config.yaml
 
 services:
+  redis:
+    image: redis
+    networks:
+      p2pnetwork:
+        ipv4_address: 192.168.0.69
+
   peer1:
     <<: *default-peer
     volumes:
       - ./dev/peer1:/usr/p2pnetwork/vol
+    depends_on:
+      - redis
     networks:
       p2pnetwork:
         ipv4_address: 192.168.0.10
@@ -26,6 +34,7 @@ services:
     volumes:
       - ./dev/peer2:/usr/p2pnetwork/vol
     depends_on:
+      - redis
       - peer1
     networks:
       p2pnetwork:
@@ -36,6 +45,7 @@ services:
     volumes:
       - ./dev/peer3:/usr/p2pnetwork/vol
     depends_on:
+      - redis
       - peer1
       - peer2
     networks:
@@ -47,6 +57,7 @@ services:
 #    volumes:
 #      - ./dev/peer4:/usr/p2pnetwork/vol
 #    depends_on:
+#      - redis
 #      - peer1
 #      - peer2
 #      - peer3

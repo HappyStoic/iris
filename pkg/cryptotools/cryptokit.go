@@ -5,7 +5,7 @@ import (
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"happystoic/p2pnetwork/pkg/messaging/p2p/pb"
+	"happystoic/p2pnetwork/pkg/messaging/pb"
 )
 
 type CryptoKit struct {

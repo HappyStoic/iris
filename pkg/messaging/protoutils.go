@@ -1,4 +1,4 @@
-package p2p
+package messaging
 
 import (
 	"context"
@@ -10,29 +10,30 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
 	"happystoic/p2pnetwork/pkg/cryptotools"
-	"happystoic/p2pnetwork/pkg/messaging/p2p/pb"
+	"happystoic/p2pnetwork/pkg/messaging/pb"
 	"io/ioutil"
 	"time"
 )
 
-type ProtoUtils struct {
+type MessageUtils struct {
 	*cryptotools.CryptoKit
 	*SeenMessagesCache
 
-	host host.Host
+	host        host.Host
+	redisClient *RedisClient
 }
 
-func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host) *ProtoUtils {
+func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *RedisClient) *MessageUtils {
 	msgCache := newMessageCache()
-	return &ProtoUtils{ck, msgCache, host}
+	return &MessageUtils{ck, msgCache, host, client}
 }
 
-func (pt *ProtoUtils) ConnectedPeers() []peer.ID {
-	return pt.host.Network().Peers()
+func (mu *MessageUtils) ConnectedPeers() []peer.ID {
+	return mu.host.Network().Peers()
 }
 
-func (pt *ProtoUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data proto.Message) error {
-	s, err := pt.host.NewStream(context.Background(), id, protocol)
+func (mu *MessageUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data proto.Message) error {
+	s, err := mu.host.NewStream(context.Background(), id, protocol)
 	if err != nil {
 		return err
 	}
@@ -51,16 +52,16 @@ func (pt *ProtoUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data pr
 	return nil
 }
 
-func (pt *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
+func (mu *MessageUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	// Add protobufs bin data for message author public key
 	// this is useful for authenticating  messages forwarded by a node authored by another node
-	nodePubKey, err := crypto.MarshalPublicKey(pt.host.Peerstore().PubKey(pt.host.ID()))
+	nodePubKey, err := crypto.MarshalPublicKey(mu.host.Peerstore().PubKey(mu.host.ID()))
 	if err != nil {
 		return nil, errors.New("Failed to get public key for sender from local node store.")
 	}
 
 	sender := &pb.PeerIdentity{
-		NodeId:        pt.host.ID().String(),
+		NodeId:        mu.host.ID().String(),
 		NodePubKey:    nodePubKey,
 		Organisations: nil,
 	}
@@ -73,7 +74,7 @@ func (pt *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	return metadata, nil
 }
 
-func (pt *ProtoUtils) deserializeMessageFromStream(s network.Stream, msg proto.Message) error {
+func (mu *MessageUtils) deserializeMessageFromStream(s network.Stream, msg proto.Message) error {
 	// read received bytes
 	buf, err := ioutil.ReadAll(s)
 	if err != nil {

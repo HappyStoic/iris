@@ -1,12 +1,18 @@
 # This peer has connection string:
 # /ip4/192.168.0.40/udp/9004/quic 12D3KooWBQZzUSWRcYSR7erwqHVg3P9wwu7pUvJgC2BSFxgY7jEG
 
-IdentityConfig:
+Identity:
   GenerateNewKey: false
   LoadKeyFromFile: ./vol/key.priv
 
 Server:
   port: 9004
+
+Redis:
+  Host: 192.168.0.69
+  Channels:
+    Tl2nlAlarmChannel: tl2nlAlarm4
+    Nl2tlAlarmChannel: nl2tlAlarm4
 
 PeerDiscovery:
   ListOfMultiAddresses:

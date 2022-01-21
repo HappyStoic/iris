@@ -1,11 +1,18 @@
-IdentityConfig:
+Identity:
   GenerateNewKey: true
 #  LoadKeyFromFile: file.key
-  SaveKeyToFile: file.key
+#  SaveKeyToFile: file.key
 
 Server:
   port: 9000
 
+Redis:
+  Host: 127.0.0.1
+  Channels:
+    Tl2nlAlarmChannel: tl2nlAlarm
+    Nl2tlAlarmChannel: nl2tlAlarm
+
+
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/192.168.88.43/udp/9001/quic 12D3KooWJTtVMiMQTbTVL2PCJyW1St85EMR9fegn4twPJQSiwNwb"
+   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWRq1UpDNLUHYRCSAW1YGVqUZzU8R2sqdnAuVfiANSWdA4"

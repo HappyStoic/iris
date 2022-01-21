@@ -1,4 +1,4 @@
-PROTOBUF_DIR=`pwd`/pkg/messaging/p2p/pb
+PROTOBUF_DIR=`pwd`/pkg/messaging/pb
 
 run:
 	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
