@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/pkg/errors"
 )
 
@@ -29,17 +30,12 @@ type IdentityConfig struct {
 }
 
 type Redis struct {
-	Host     string
-	Port     uint
-	Db       int
-	Username string
-	Password string
-	Channels RedisChannels
-}
-
-type RedisChannels struct {
-	Tl2nlAlarmChannel string
-	Nl2tlAlarmChannel string
+	Host         string
+	Port         uint
+	Db           int
+	Username     string
+	Password     string
+	Tl2NlChannel string
 }
 
 // Addr constructs address from host and port
@@ -58,9 +54,8 @@ func (c *Config) Check() error {
 	if c.Redis.Host == "" {
 		return errors.New("redis host must be specified")
 	}
-	if c.Redis.Channels.Tl2nlAlarmChannel == "" ||
-		c.Redis.Channels.Nl2tlAlarmChannel == "" {
-		return errors.New("redis channels must be specified")
+	if c.Redis.Tl2NlChannel == "" {
+		return errors.New("tl2nl redis channel must be specified")
 	}
 	// default values
 	if c.Redis.Port == 0 {

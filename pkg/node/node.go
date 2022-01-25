@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"fmt"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -11,17 +12,21 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/pkg/errors"
+
 	"happystoic/p2pnetwork/pkg/config"
 	"happystoic/p2pnetwork/pkg/cryptotools"
-	"happystoic/p2pnetwork/pkg/messaging"
+	"happystoic/p2pnetwork/pkg/messaging/clients"
+	"happystoic/p2pnetwork/pkg/messaging/protocols"
+	"happystoic/p2pnetwork/pkg/messaging/utils"
 	"happystoic/p2pnetwork/pkg/peer-discovery"
 )
 
 var log = logging.Logger("p2pnetwork")
 
 type Node struct {
-	host.Host // TODO is host really important here?
-	*messaging.AlarmProtocol
+	host.Host                // TODO is host really important here?
+	*protocols.AlertProtocol // TODO are protocols really important here?
+	*protocols.RecommendationProtocol
 
 	conf *config.Config
 	ctx  context.Context
@@ -80,15 +85,16 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		ctx:  ctx,
 	}
 	// create redis client
-	redisClient, err := messaging.NewRedisClient(&conf.Redis, ctx)
+	redisClient, err := clients.NewRedisClient(&conf.Redis, ctx)
 	if err != nil {
 		return nil, errors.Errorf("error creating redis client: %s", err)
 	}
 
 	// setup all protocols
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
-	protoUtils := messaging.NewProtoUtils(cryptoKit, p2phost, redisClient)
-	n.AlarmProtocol = messaging.NewAlarmProtocol(protoUtils)
+	messageUtils := utils.NewMessageUtils(cryptoKit, p2phost, redisClient)
+	n.AlertProtocol = protocols.NewAlertProtocol(messageUtils)
+	n.RecommendationProtocol = protocols.NewRecommendationProtocol(messageUtils)
 
 	return n, nil
 }
@@ -112,7 +118,7 @@ func (n *Node) ConnectToInitPeers() {
 func (n *Node) Start(doSomething bool) {
 	if doSomething {
 		log.Info("Doing something (not really)")
-		n.InitiateP2PAlarm("prdel!!! zachovejte paniku, cusasaan Milan")
+		//n.InitiateP2PAlert([]byte("prdel!!! zachovejte paniku, cusasaan Milan"))
 	}
 	<-make(chan struct{})
 }

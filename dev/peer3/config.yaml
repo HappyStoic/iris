@@ -10,9 +10,7 @@ Server:
 
 Redis:
   Host: 192.168.0.69
-  Channels:
-    Tl2nlAlarmChannel: tl2nlAlarm3
-    Nl2tlAlarmChannel: nl2tlAlarm3
+  Tl2NlChannel: gp2p_tl2nl3
 
 PeerDiscovery:
   ListOfMultiAddresses:

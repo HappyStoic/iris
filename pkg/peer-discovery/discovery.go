@@ -1,12 +1,14 @@
 package peer_discovery
 
 import (
+	"strings"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
+
 	"happystoic/p2pnetwork/pkg/config"
-	"strings"
 )
 
 var log = logging.Logger("p2pnetwork")

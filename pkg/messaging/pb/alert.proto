@@ -4,8 +4,8 @@ option go_package = "./pkg/messaging/pb";
 
 import  "base.proto";
 
-message Alarm {
+message Alert {
   MetaData metadata = 1;
 
-  string message = 2;
+  bytes payload = 2;
 }

@@ -1,39 +1,50 @@
-package messaging
+package utils
 
 import (
 	"context"
+	"io/ioutil"
+	"time"
+
 	"github.com/golang/protobuf/proto"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	"github.com/pkg/errors"
+
 	"happystoic/p2pnetwork/pkg/cryptotools"
+	"happystoic/p2pnetwork/pkg/messaging/clients"
 	"happystoic/p2pnetwork/pkg/messaging/pb"
-	"io/ioutil"
-	"time"
 )
 
-type MessageUtils struct {
+var log = logging.Logger("p2pnetwork")
+
+type PeerMetadata struct {
+	Id            string   `json:"id"`
+	Organisations []string `json:"organisations"`
+}
+
+type ProtoUtils struct {
 	*cryptotools.CryptoKit
 	*SeenMessagesCache
 
-	host        host.Host
-	redisClient *RedisClient
+	Host        host.Host
+	RedisClient *clients.RedisClient
 }
 
-func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *RedisClient) *MessageUtils {
+func NewMessageUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient) *ProtoUtils {
 	msgCache := newMessageCache()
-	return &MessageUtils{ck, msgCache, host, client}
+	return &ProtoUtils{ck, msgCache, host, client}
 }
 
-func (mu *MessageUtils) ConnectedPeers() []peer.ID {
-	return mu.host.Network().Peers()
+func (pu *ProtoUtils) ConnectedPeers() []peer.ID {
+	return pu.Host.Network().Peers()
 }
 
-func (mu *MessageUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data proto.Message) error {
-	s, err := mu.host.NewStream(context.Background(), id, protocol)
+func (pu *ProtoUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data proto.Message) error {
+	s, err := pu.Host.NewStream(context.Background(), id, protocol)
 	if err != nil {
 		return err
 	}
@@ -52,16 +63,16 @@ func (mu *MessageUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data 
 	return nil
 }
 
-func (mu *MessageUtils) NewProtoMetaData() (*pb.MetaData, error) {
+func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	// Add protobufs bin data for message author public key
 	// this is useful for authenticating  messages forwarded by a node authored by another node
-	nodePubKey, err := crypto.MarshalPublicKey(mu.host.Peerstore().PubKey(mu.host.ID()))
+	nodePubKey, err := crypto.MarshalPublicKey(pu.Host.Peerstore().PubKey(pu.Host.ID()))
 	if err != nil {
 		return nil, errors.New("Failed to get public key for sender from local node store.")
 	}
 
 	sender := &pb.PeerIdentity{
-		NodeId:        mu.host.ID().String(),
+		NodeId:        pu.Host.ID().String(),
 		NodePubKey:    nodePubKey,
 		Organisations: nil,
 	}
@@ -74,7 +85,15 @@ func (mu *MessageUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	return metadata, nil
 }
 
-func (mu *MessageUtils) deserializeMessageFromStream(s network.Stream, msg proto.Message) error {
+func (pu *ProtoUtils) MetadataOfPeer(id string) PeerMetadata {
+	// TODO make organisations work
+	return PeerMetadata{
+		Id:            id,
+		Organisations: []string{"prdel"},
+	}
+}
+
+func (pu *ProtoUtils) DeserializeMessageFromStream(s network.Stream, msg proto.Message) error {
 	// read received bytes
 	buf, err := ioutil.ReadAll(s)
 	if err != nil {
@@ -89,25 +108,4 @@ func (mu *MessageUtils) deserializeMessageFromStream(s network.Stream, msg proto
 		return err
 	}
 	return nil
-}
-
-type SeenMessagesCache struct {
-	cache map[string]bool
-	ttl   time.Duration
-}
-
-func newMessageCache() *SeenMessagesCache {
-	return &SeenMessagesCache{
-		cache: make(map[string]bool),
-		ttl:   0,
-	}
-}
-
-func (c *SeenMessagesCache) wasMsgSeen(s string) bool {
-	_, ok := c.cache[s]
-	return ok
-}
-
-func (c *SeenMessagesCache) newMsgSeen(s string) {
-	c.cache[s] = true
 }

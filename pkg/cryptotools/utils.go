@@ -1,10 +1,12 @@
 package cryptotools
 
 import (
+	"os"
+
 	"github.com/google/uuid"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+
 	"happystoic/p2pnetwork/pkg/config"
-	"os"
 )
 
 func GetPrivateKey(conf *config.IdentityConfig) (key libp2pcrypto.PrivKey, err error) {

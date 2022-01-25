@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.27.1
 // 	protoc        v3.19.3
-// source: alarm.proto
+// source: alert.proto
 
 package pb
 
@@ -20,32 +20,32 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Alarm struct {
+type Alert struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
 	Metadata *MetaData `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
-	Message  string    `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	Payload  []byte    `protobuf:"bytes,2,opt,name=payload,proto3" json:"payload,omitempty"`
 }
 
-func (x *Alarm) Reset() {
-	*x = Alarm{}
+func (x *Alert) Reset() {
+	*x = Alert{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_alarm_proto_msgTypes[0]
+		mi := &file_alert_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
 }
 
-func (x *Alarm) String() string {
+func (x *Alert) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Alarm) ProtoMessage() {}
+func (*Alert) ProtoMessage() {}
 
-func (x *Alarm) ProtoReflect() protoreflect.Message {
-	mi := &file_alarm_proto_msgTypes[0]
+func (x *Alert) ProtoReflect() protoreflect.Message {
+	mi := &file_alert_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,58 +56,58 @@ func (x *Alarm) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Alarm.ProtoReflect.Descriptor instead.
-func (*Alarm) Descriptor() ([]byte, []int) {
-	return file_alarm_proto_rawDescGZIP(), []int{0}
+// Deprecated: Use Alert.ProtoReflect.Descriptor instead.
+func (*Alert) Descriptor() ([]byte, []int) {
+	return file_alert_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Alarm) GetMetadata() *MetaData {
+func (x *Alert) GetMetadata() *MetaData {
 	if x != nil {
 		return x.Metadata
 	}
 	return nil
 }
 
-func (x *Alarm) GetMessage() string {
+func (x *Alert) GetPayload() []byte {
 	if x != nil {
-		return x.Message
+		return x.Payload
 	}
-	return ""
+	return nil
 }
 
-var File_alarm_proto protoreflect.FileDescriptor
+var File_alert_proto protoreflect.FileDescriptor
 
-var file_alarm_proto_rawDesc = []byte{
-	0x0a, 0x0b, 0x61, 0x6c, 0x61, 0x72, 0x6d, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x70,
+var file_alert_proto_rawDesc = []byte{
+	0x0a, 0x0b, 0x61, 0x6c, 0x65, 0x72, 0x74, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x70,
 	0x62, 0x1a, 0x0a, 0x62, 0x61, 0x73, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0x4b, 0x0a,
-	0x05, 0x41, 0x6c, 0x61, 0x72, 0x6d, 0x12, 0x28, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x05, 0x41, 0x6c, 0x65, 0x72, 0x74, 0x12, 0x28, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
 	0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x62, 0x2e, 0x4d, 0x65,
 	0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
-	0x12, 0x18, 0x0a, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x07, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65, 0x42, 0x14, 0x5a, 0x12, 0x2e, 0x2f,
+	0x12, 0x18, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28,
+	0x0c, 0x52, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x42, 0x14, 0x5a, 0x12, 0x2e, 0x2f,
 	0x70, 0x6b, 0x67, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x69, 0x6e, 0x67, 0x2f, 0x70, 0x62,
 	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
-	file_alarm_proto_rawDescOnce sync.Once
-	file_alarm_proto_rawDescData = file_alarm_proto_rawDesc
+	file_alert_proto_rawDescOnce sync.Once
+	file_alert_proto_rawDescData = file_alert_proto_rawDesc
 )
 
-func file_alarm_proto_rawDescGZIP() []byte {
-	file_alarm_proto_rawDescOnce.Do(func() {
-		file_alarm_proto_rawDescData = protoimpl.X.CompressGZIP(file_alarm_proto_rawDescData)
+func file_alert_proto_rawDescGZIP() []byte {
+	file_alert_proto_rawDescOnce.Do(func() {
+		file_alert_proto_rawDescData = protoimpl.X.CompressGZIP(file_alert_proto_rawDescData)
 	})
-	return file_alarm_proto_rawDescData
+	return file_alert_proto_rawDescData
 }
 
-var file_alarm_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
-var file_alarm_proto_goTypes = []interface{}{
-	(*Alarm)(nil),    // 0: pb.Alarm
+var file_alert_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_alert_proto_goTypes = []interface{}{
+	(*Alert)(nil),    // 0: pb.Alert
 	(*MetaData)(nil), // 1: pb.MetaData
 }
-var file_alarm_proto_depIdxs = []int32{
-	1, // 0: pb.Alarm.metadata:type_name -> pb.MetaData
+var file_alert_proto_depIdxs = []int32{
+	1, // 0: pb.Alert.metadata:type_name -> pb.MetaData
 	1, // [1:1] is the sub-list for method output_type
 	1, // [1:1] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
@@ -115,15 +115,15 @@ var file_alarm_proto_depIdxs = []int32{
 	0, // [0:1] is the sub-list for field type_name
 }
 
-func init() { file_alarm_proto_init() }
-func file_alarm_proto_init() {
-	if File_alarm_proto != nil {
+func init() { file_alert_proto_init() }
+func file_alert_proto_init() {
+	if File_alert_proto != nil {
 		return
 	}
 	file_base_proto_init()
 	if !protoimpl.UnsafeEnabled {
-		file_alarm_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Alarm); i {
+		file_alert_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Alert); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -139,18 +139,18 @@ func file_alarm_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_alarm_proto_rawDesc,
+			RawDescriptor: file_alert_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
-		GoTypes:           file_alarm_proto_goTypes,
-		DependencyIndexes: file_alarm_proto_depIdxs,
-		MessageInfos:      file_alarm_proto_msgTypes,
+		GoTypes:           file_alert_proto_goTypes,
+		DependencyIndexes: file_alert_proto_depIdxs,
+		MessageInfos:      file_alert_proto_msgTypes,
 	}.Build()
-	File_alarm_proto = out.File
-	file_alarm_proto_rawDesc = nil
-	file_alarm_proto_goTypes = nil
-	file_alarm_proto_depIdxs = nil
+	File_alert_proto = out.File
+	file_alert_proto_rawDesc = nil
+	file_alert_proto_goTypes = nil
+	file_alert_proto_depIdxs = nil
 }

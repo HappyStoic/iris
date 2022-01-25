@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"flag"
+	"net"
+	"os"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
 	"happystoic/p2pnetwork/pkg/config"
 	"happystoic/p2pnetwork/pkg/node"
-	"net"
-	"os"
 )
 
 var log = logging.Logger("p2pnetwork")
@@ -25,6 +27,7 @@ var log = logging.Logger("p2pnetwork")
 // TODO: add redis api
 // TODO: add network notiffee and send update to TL through redis when peers connecgt/disconnect
 // TODO: use msgs timestamp to throw away old messages?
+// TODO: can you spoof QUIC sender? If not, tell TL if stream is corrupted and cannot be deserialized so the IP can be punished
 
 func loadConfig() (*config.Config, error) {
 	var c config.Config

@@ -4,15 +4,13 @@ Identity:
 #  SaveKeyToFile: file.key
 
 Server:
-  port: 9000
+  port: 9001
 
 Redis:
   Host: 127.0.0.1
-  Channels:
-    Tl2nlAlarmChannel: tl2nlAlarm
-    Nl2tlAlarmChannel: nl2tlAlarm
+  Tl2NlChannel: gp2p_tl2nl2
 
 
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWRq1UpDNLUHYRCSAW1YGVqUZzU8R2sqdnAuVfiANSWdA4"
+   - "/ip4/192.168.88.43/udp/9000/quic 12D3KooWE6sudG8bndFCF9VJqPTGvPRMVLAAizwbyK1Lcx3bSjAq"

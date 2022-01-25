@@ -1,0 +1,1 @@
+PUBLISH gp2p_tl2nl '{"type": "tl2nl_alert", "version": 1, "data": { "payload": "<blackbox for TL>" }}'
