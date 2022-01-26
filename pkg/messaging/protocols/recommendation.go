@@ -22,6 +22,12 @@ type RedisTl2NlRecommendationRequest struct {
 	Payload     interface{} `json:"payload"`
 }
 
+type RedisNl2TlRecommendationRequest struct {
+	RequestId string             `json:"request_id"`
+	Sender    utils.PeerMetadata `json:"sender"`
+	Payload   interface{}        `json:"payload"`
+}
+
 type RedisNl2TlRecommendationResponse []*Recommendation
 type Recommendation struct {
 	Sender  utils.PeerMetadata `json:"sender"`
@@ -55,8 +61,36 @@ func NewRecommendationProtocol(ctx context.Context,
 }
 
 func (rp *RecommendationProtocol) onP2PRequest(s network.Stream) {
-	// TODO
-	log.Debug("### onP2PRequest handler ended ###")
+	log.Infof("received p2p recommendation request")
+	recomReq := &pb.RecommendationRequest{}
+
+	err := rp.DeserializeMessageFromStream(s, recomReq)
+	if err != nil {
+		log.Errorf("error deserilising p2p recommendation request from stream: %s", err)
+		return
+	}
+
+	err = rp.AuthenticateMessage(recomReq, recomReq.Metadata)
+	if err != nil {
+		log.Errorf("error authenticating p2P recommendation request: %s", err)
+		return
+	}
+	var v interface{}
+	if err := json.Unmarshal(recomReq.Payload, &v); err != nil {
+		log.Errorf("error deserialising received payload in p2p recommendation request: %s", err)
+		return
+	}
+	requestToRedis := RedisNl2TlRecommendationRequest{
+		RequestId: recomReq.Metadata.Id,
+		Sender:    rp.MetadataOfPeer(recomReq.Metadata.OriginalSender.NodeId),
+		Payload:   v,
+	}
+	err = rp.RedisClient.PublishMessage("nl2tl_recommendation_request", requestToRedis)
+	if err != nil {
+		log.Errorf("error publishing recommendation request to TL: %s", err)
+		return
+	}
+	log.Debug("onP2PRequest handler successfully ended")
 }
 
 func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
@@ -79,7 +113,7 @@ func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
 		log.Errorf("error adding response to respStorage with id %s: %s", recomResp.RequestId, err)
 		return
 	}
-	log.Debug("p2p recommendation response was sucessfully put into response storage")
+	log.Debug("p2p recommendation response was successfully put into response storage")
 }
 
 func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses []proto.Message) {
@@ -151,7 +185,7 @@ func (rp *RecommendationProtocol) initiateP2PRecomRequest(req *RedisTl2NlRecomme
 		log.Debugf("sending recommendation request to peer %s", pid)
 		err = rp.SendProtoMessage(pid, p2pRecomRequestProtocol, p2pRequest)
 		if err != nil {
-			log.Errorf("error sending alert message to node %s: %s", pid, err)
+			log.Errorf("error sending recommendation request to node %s: %s", pid, err)
 			continue
 		}
 	}
@@ -173,7 +207,7 @@ func (rp *RecommendationProtocol) createP2PRecomRequest(payload interface{}) (*p
 	}
 	signature, err := rp.SignProtoMessage(protoMsg)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error generating signature for new alert message: ")
+		return nil, errors.WithMessage(err, "error generating signature for new recommendation request: ")
 	}
 	protoMsg.Metadata.Signature = signature
 	return protoMsg, err
