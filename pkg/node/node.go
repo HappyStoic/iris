@@ -92,9 +92,9 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	// setup all protocols
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
-	messageUtils := utils.NewMessageUtils(cryptoKit, p2phost, redisClient)
-	n.AlertProtocol = protocols.NewAlertProtocol(messageUtils)
-	n.RecommendationProtocol = protocols.NewRecommendationProtocol(messageUtils)
+	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient)
+	n.AlertProtocol = protocols.NewAlertProtocol(protoUtils)
+	n.RecommendationProtocol = protocols.NewRecommendationProtocol(ctx, protoUtils, &conf.ProtocolSettings.Recommendation)
 
 	return n, nil
 }

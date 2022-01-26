@@ -1,101 +1,154 @@
 package protocols
 
 import (
+	"context"
+	"encoding/json"
+	"github.com/golang/protobuf/proto"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
+
+	"happystoic/p2pnetwork/pkg/config"
+	"happystoic/p2pnetwork/pkg/messaging/pb"
 	"happystoic/p2pnetwork/pkg/messaging/utils"
 )
 
 // p2p protocol definition
-const recommendationRequest = "/recommendation-request/0.0.1"
-const recommendationResponse = "/recommendation-response/0.0.1"
+const p2pRecomRequestProtocol = "/recommendation-request/0.0.1"
+const p2pRecomResponseProtocol = "/recommendation-response/0.0.1"
+
+type RedisTl2NlRecommendationRequest struct {
+	ReceiverIds []string    `json:"receiver_ids"`
+	Payload     interface{} `json:"payload"`
+}
 
 // RecommendationProtocol type
 type RecommendationProtocol struct {
 	*utils.ProtoUtils
+
+	ctx         context.Context
+	respStorage *utils.RespStorageManager
+	settings    *config.RecommendationSettings
 }
 
-func NewRecommendationProtocol(mu *utils.ProtoUtils) *RecommendationProtocol {
-	rp := &RecommendationProtocol{mu}
+func NewRecommendationProtocol(ctx context.Context,
+	pu *utils.ProtoUtils,
+	c *config.RecommendationSettings) *RecommendationProtocol {
+	rp := &RecommendationProtocol{
+		ProtoUtils: pu,
+		ctx:        ctx,
+		settings:   c,
+	}
+	rp.respStorage = utils.NewResponseStorage(rp.onAggregatedP2PResponses)
 
-	//rp.host.SetStreamHandler(recommendationRequest, rp.onP2PRecommendationRequest)
-	//rp.redisClient.subscribeCallback(rp.redisClient.channels.Tl2nlRecommendation, rp.onRedisRecommendationRequest)
+	_ = rp.RedisClient.SubscribeCallback("tl2nl_recommendation_request", rp.onRedisRecommendationRequest)
+	_ = rp.RedisClient.SubscribeCallback("tl2nl_recommendation_response", rp.onRedisRecommendationResponse)
+	rp.Host.SetStreamHandler(p2pRecomRequestProtocol, rp.onP2PRequest)
+	rp.Host.SetStreamHandler(p2pRecomResponseProtocol, rp.onP2PResponse)
 	return rp
 }
 
-//
-//func (rp *RecommendationProtocol) onP2PRecommendationMessage(s network.Stream) {
-//	recomRequest := &pb.RecommendationRequest{}
-//
-//	err := rp.deserializeMessageFromStream(s, recomRequest)
-//	if err != nil {
-//		log.Errorf("error deserilising recommendationRequest proto message from stream: %s", err)
-//		return
-//	}
-//
-//	// TODO
-//
-//	return
-//}
-//
-//func (rp *RecommendationProtocol) onRedisRecommendationRequest(message string) {
-//	req := RedisTl2NlRecommendationRequest{}
-//	err := json.Unmarshal([]byte(message), &req)
-//	if err != nil {
-//		log.Errorf("error unmarshalling redis recommendation request: %s", err)
-//		return
-//	}
-//	log.Debugf("received alarm message from TL asking %s peers about peer %s", req.ReceiverIds, req.TargetId)
-//
-//	msgMetaData, err := rp.NewProtoMetaData()
-//	if err != nil {
-//		log.Errorf("Error generating new proto metadata: %s", err)
-//		return
-//	}
-//	protoMsg := &pb.RecommendationRequest{
-//		Metadata: msgMetaData,
-//		TargetId: req.TargetId,
-//	}
-//	signature, err := rp.SignProtoMessage(protoMsg)
-//	if err != nil {
-//		log.Errorf("Error generating signature for new recommendation request message: %s", err)
-//		return
-//	}
-//	protoMsg.Metadata.Signature = signature
-//
-//	// send request to all desired peers
-//	for _, pidString := range req.ReceiverIds {
-//		pid, err := peer.Decode(pidString)
-//		if err != nil {
-//			log.Errorf("error decoding receiver peer's id '%s' received by NL: %s", pidString, err)
-//			continue
-//		}
-//		err = rp.SendProtoMessage(pid, recommendationRequest, protoMsg)
-//		if err != nil {
-//			log.Errorf("Error sending recommendation request message to node %s: %s", pid, err)
-//			continue
-//		}
-//		log.Debugf("successfully sent recommendation request to peer: %s", pid)
-//	}
-//}
-//
-//func (rp *RecommendationProtocol) onP2PRecommendationRequest(s network.Stream) {
-//	log.Infof("received p2p recommendation request message")
-//	req := &pb.RecommendationRequest{}
-//
-//	err := rp.deserializeMessageFromStream(s, req)
-//	if err != nil {
-//		log.Errorf("error deserilising p2p recommendation request from stream: %s", err)
-//		return
-//	}
-//	valid, err := rp.AuthenticateMessage(req, req.Metadata)
-//	if err != nil {
-//		log.Errorf("Error authenticating p2p recommendation request message: %s", err)
-//		return
-//	}
-//	if !valid {
-//		log.Warnf("Alarm message failed authentication verification")
-//		return
-//	}
-//
-//	log.Debugf("received p2p recommendation req from %s asking about %s", s.Conn().RemotePeer(), req.TargetId)
-//
-//}
+func (rp *RecommendationProtocol) onP2PRequest(s network.Stream) {
+	// TODO
+	log.Debug("### onP2PRequest handler ended ###")
+}
+
+func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
+	log.Infof("received p2p recommendation response")
+	recomResp := &pb.RecommendationResponse{}
+
+	err := rp.DeserializeMessageFromStream(s, recomResp)
+	if err != nil {
+		log.Errorf("error deserilising p2P recommendation response from stream: %s", err)
+		return
+	}
+
+	err = rp.AuthenticateMessage(recomResp, recomResp.Metadata)
+	if err != nil {
+		log.Errorf("error authenticating p2P recommendation response: %s", err)
+		return
+	}
+	err = rp.respStorage.AddResponse(recomResp.RequestId, recomResp)
+	if err != nil {
+		log.Errorf("error adding response to respStorage with id %s: %s", recomResp.RequestId, err)
+		return
+	}
+	log.Debug("p2p recommendation response was sucessfully put into response storage")
+}
+
+func (rp *RecommendationProtocol) onAggregatedP2PResponses(id string, responses []proto.Message) {
+	// TODO
+	// TODO (and check if responses has zero length)
+	log.Debug("onAggregatedP2PResponses handler successfully ended")
+}
+
+func (rp *RecommendationProtocol) onRedisRecommendationRequest(data []byte) {
+	req := RedisTl2NlRecommendationRequest{}
+	err := json.Unmarshal(data, &req)
+	if err != nil {
+		log.Errorf("error unmarshalling RedisTl2NlRecommendationRequest from redis: %s", err)
+		return
+	}
+	log.Debug("received recommendation request from TL")
+	rp.initiateP2PRecomRequest(&req)
+}
+
+func (rp *RecommendationProtocol) initiateP2PRecomRequest(req *RedisTl2NlRecommendationRequest) {
+	p2pRequest, err := rp.createP2PRecomRequest(req.Payload)
+	if err != nil {
+		log.Errorf("error creating p2p recommendation request: %s", err)
+		return
+	}
+	if len(req.ReceiverIds) == 0 {
+		log.Warn("no receivers specified for recommendation request")
+		return
+	}
+	// start waiter, who will process all responses when they are aggregated or timeout elapses
+	err = rp.respStorage.StartWaiting(rp.ctx, p2pRequest.Metadata.Id, len(req.ReceiverIds), rp.settings.Timeout)
+	if err != nil {
+		log.Errorf("error when starting to wait for recommendation responses: %s", err)
+		return
+	}
+
+	// send recommendation request to receivers
+	for _, rawPid := range req.ReceiverIds {
+		pid, err := peer.Decode(rawPid)
+		if err != nil {
+			log.Errorf("error decoding peer id %s: %s", rawPid, err)
+			continue
+		}
+
+		log.Debugf("sending recommendation request to peer %s", pid)
+		err = rp.SendProtoMessage(pid, p2pRecomRequestProtocol, p2pRequest)
+		if err != nil {
+			log.Errorf("error sending alert message to node %s: %s", pid, err)
+			continue
+		}
+	}
+}
+
+func (rp *RecommendationProtocol) createP2PRecomRequest(payload interface{}) (*pb.RecommendationRequest, error) {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	msgMetaData, err := rp.NewProtoMetaData()
+	if err != nil {
+		return nil, errors.WithMessage(err, "error generating new proto metadata: ")
+	}
+
+	protoMsg := &pb.RecommendationRequest{
+		Metadata: msgMetaData,
+		Payload:  payloadBytes,
+	}
+	signature, err := rp.SignProtoMessage(protoMsg)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error generating signature for new alert message: ")
+	}
+	protoMsg.Metadata.Signature = signature
+	return protoMsg, err
+}
+
+func (rp *RecommendationProtocol) onRedisRecommendationResponse(data []byte) {
+	// TODO
+}

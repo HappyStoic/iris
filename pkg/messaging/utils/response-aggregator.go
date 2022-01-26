@@ -16,7 +16,7 @@ type Storage struct {
 	responses   []proto.Message
 }
 
-func NewStorage(maxResp uint) *Storage {
+func NewStorage(maxResp int) *Storage {
 	return &Storage{
 		receivingCh: make(chan proto.Message),
 		responses:   make([]proto.Message, 0, maxResp),
@@ -55,7 +55,7 @@ func NewResponseStorage(respProc ResponsesProcessor) *RespStorageManager {
 	}
 }
 
-func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxResp uint, ttl time.Duration) error {
+func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxResp int, ttl time.Duration) error {
 	_, exists := rsm.storageMap[id]
 	if exists {
 		return errors.Errorf("there is already storage for responses on request with id %s", id)

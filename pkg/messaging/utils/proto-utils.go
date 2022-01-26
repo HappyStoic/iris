@@ -34,7 +34,7 @@ type ProtoUtils struct {
 	RedisClient *clients.RedisClient
 }
 
-func NewMessageUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient) *ProtoUtils {
+func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient) *ProtoUtils {
 	msgCache := newMessageCache()
 	return &ProtoUtils{ck, msgCache, host, client}
 }

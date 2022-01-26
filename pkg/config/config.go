@@ -2,15 +2,17 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/pkg/errors"
 )
 
 type Config struct {
-	Identity      IdentityConfig
-	PeerDiscovery PeerDiscovery
-	Server        Server
-	Redis         Redis
+	Identity         IdentityConfig
+	PeerDiscovery    PeerDiscovery
+	Server           Server
+	Redis            Redis
+	ProtocolSettings ProtocolSettings
 }
 
 type Server struct {
@@ -38,6 +40,14 @@ type Redis struct {
 	Tl2NlChannel string
 }
 
+type ProtocolSettings struct {
+	Recommendation RecommendationSettings
+}
+
+type RecommendationSettings struct {
+	Timeout time.Duration
+}
+
 // Addr constructs address from host and port
 func (r *Redis) Addr() string {
 	return fmt.Sprintf("%s:%d", r.Host, r.Port)
@@ -56,6 +66,9 @@ func (c *Config) Check() error {
 	}
 	if c.Redis.Tl2NlChannel == "" {
 		return errors.New("tl2nl redis channel must be specified")
+	}
+	if c.ProtocolSettings.Recommendation.Timeout == 0 {
+		return errors.New("ProtocolSettings.Recommendation.Timeout must be set")
 	}
 	// default values
 	if c.Redis.Port == 0 {

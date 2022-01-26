@@ -16,7 +16,7 @@ import (
 var log = logging.Logger("p2pnetwork")
 
 // p2p protocol definition
-const alertMessage = "/alert/0.0.1"
+const p2pAlertProtocol = "/alert/0.0.1"
 
 // AlertProtocol type
 type AlertProtocol struct {
@@ -32,10 +32,10 @@ type RedisAlertResponseData struct {
 	Payload interface{}        `json:"payload"`
 }
 
-func NewAlertProtocol(mu *utils.ProtoUtils) *AlertProtocol {
-	ap := &AlertProtocol{mu}
+func NewAlertProtocol(pu *utils.ProtoUtils) *AlertProtocol {
+	ap := &AlertProtocol{pu}
 
-	ap.Host.SetStreamHandler(alertMessage, ap.onP2PAlertMessage)
+	ap.Host.SetStreamHandler(p2pAlertProtocol, ap.onP2PAlertMessage)
 	_ = ap.RedisClient.SubscribeCallback("tl2nl_alert", ap.onRedisAlertMessage)
 	return ap
 }
@@ -53,7 +53,7 @@ func (ap *AlertProtocol) onRedisAlertMessage(data []byte) {
 
 // InitiateP2PAlert initiates an alert message and sends it to all connected peers
 func (ap *AlertProtocol) InitiateP2PAlert(payload interface{}) {
-	alert, err := ap.createProtoAlert(payload)
+	alert, err := ap.createP2PAlert(payload)
 	if err != nil {
 		log.Error(err)
 		return
@@ -62,14 +62,14 @@ func (ap *AlertProtocol) InitiateP2PAlert(payload interface{}) {
 	// send alert to all connected peers
 	for _, pid := range ap.ConnectedPeers() {
 		log.Debugf("sending alert message to peer %s", pid)
-		err = ap.SendProtoMessage(pid, alertMessage, alert)
+		err = ap.SendProtoMessage(pid, p2pAlertProtocol, alert)
 		if err != nil {
 			log.Errorf("error sending alert message to node %s: %s", pid, err)
 		}
 	}
 }
 
-func (ap *AlertProtocol) createProtoAlert(payload interface{}) (*pb.Alert, error) {
+func (ap *AlertProtocol) createP2PAlert(payload interface{}) (*pb.Alert, error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -158,7 +158,7 @@ func (ap *AlertProtocol) ForwardP2PAlert(protoMsg proto.Message, senderID peer.I
 		}
 
 		log.Debugf("Forwarding alert message to peer %s", pid)
-		err := ap.SendProtoMessage(pid, alertMessage, protoMsg)
+		err := ap.SendProtoMessage(pid, p2pAlertProtocol, protoMsg)
 		if err != nil {
 			log.Errorf("error forwarding alert message to node %s: %s", pid, err)
 		}

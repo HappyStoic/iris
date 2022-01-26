@@ -7,7 +7,7 @@ import  "base.proto";
 message RecommendationRequest {
   MetaData metadata = 1;
 
-  string targetId = 2;
+  bytes payload = 2;
 }
 
 message RecommendationResponse {

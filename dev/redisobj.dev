@@ -1,1 +1,5 @@
+# Alert
 PUBLISH gp2p_tl2nl '{"type": "tl2nl_alert", "version": 1, "data": { "payload": "<blackbox for TL>" }}'
+
+# Recommendation REQUEST
+PUBLISH gp2p_tl2nl '{"type": "tl2nl_recommendation_request", "version": 1, "data": { "receiver_ids": ["12D3KooWE6sudG8bndFCF9VJqPTGvPRMVLAAizwbyK1Lcx3bSjAq"], "payload": "Cusan Milan" }}'
