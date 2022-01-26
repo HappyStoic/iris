@@ -73,12 +73,13 @@ func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxR
 					log.Errorf("error putting new resp into response storage: %s", err)
 				}
 				if s.full() {
+					log.Infof("aggregated all responses in response storage with id %s", id)
 					rsm.finish(id)
 					return
 				}
 
 			case <-time.After(ttl):
-				log.Infof("Timout elapsed waiting for the responses with storage id %s, got %s responses", id,
+				log.Infof("imout elapsed waiting for the responses with storage id %s, got %s responses", id,
 					s.status())
 				rsm.finish(id)
 				return

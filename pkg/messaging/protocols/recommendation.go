@@ -22,6 +22,12 @@ type RedisTl2NlRecommendationRequest struct {
 	Payload     interface{} `json:"payload"`
 }
 
+type RedisNl2TlRecommendationResponse []*Recommendation
+type Recommendation struct {
+	Sender  utils.PeerMetadata `json:"sender"`
+	Payload interface{}        `json:"payload"`
+}
+
 // RecommendationProtocol type
 type RecommendationProtocol struct {
 	*utils.ProtoUtils
@@ -76,9 +82,33 @@ func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
 	log.Debug("p2p recommendation response was sucessfully put into response storage")
 }
 
-func (rp *RecommendationProtocol) onAggregatedP2PResponses(id string, responses []proto.Message) {
-	// TODO
-	// TODO (and check if responses has zero length)
+func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses []proto.Message) {
+	if len(responses) == 0 {
+		log.Errorf("aggregated zero responses, not sending any response to Redis")
+		return
+	}
+	recomRedisResp := make(RedisNl2TlRecommendationResponse, 0, len(responses))
+	for i := range responses {
+		resp := pb.RecommendationResponse{}
+		bytes, _ := proto.Marshal(responses[i])
+		_ = proto.Unmarshal(bytes, &resp)
+
+		var v interface{}
+		if err := json.Unmarshal(resp.Payload, &v); err != nil {
+			log.Errorf("error deserialising received payload in p2p recommendation response: %s", err)
+			continue
+		}
+
+		recomRedisResp = append(recomRedisResp, &Recommendation{
+			Sender:  rp.MetadataOfPeer(resp.Metadata.Id),
+			Payload: v,
+		})
+	}
+	err := rp.RedisClient.PublishMessage("nl2tl_recommendation_response", recomRedisResp)
+	if err != nil {
+		log.Errorf("error publishing recommendation response to TL: %s", err)
+		return
+	}
 	log.Debug("onAggregatedP2PResponses handler successfully ended")
 }
 

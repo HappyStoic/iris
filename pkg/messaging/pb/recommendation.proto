@@ -14,10 +14,5 @@ message RecommendationResponse {
   MetaData metadata = 1;
 
   string requestId = 2;
-  Recommendation recommendation = 3;
-}
-
-message Recommendation {
-  string nodeId = 1;
-  string value = 2;
+  bytes payload = 3;
 }
