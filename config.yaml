@@ -16,4 +16,4 @@ ProtocolSettings:
 
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/192.168.88.43/udp/9000/quic 12D3KooWS5G6m124xijU3vV6UvPbMs5H8iMBaAF4q4Zwvd2SnQJq"
+   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWMoHzpFyguN6SWKgs6KQt9tLf6RTfqqeDuv8foFjnMPfY"

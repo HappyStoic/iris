@@ -3,3 +3,7 @@ PUBLISH gp2p_tl2nl '{"type": "tl2nl_alert", "version": 1, "data": { "payload": "
 
 # Recommendation REQUEST
 PUBLISH gp2p_tl2nl '{"type": "tl2nl_recommendation_request", "version": 1, "data": { "receiver_ids": ["12D3KooWRmR4MXPBHDMNXffVip1ocoa24Xo4G4mzscnbJSNAG1nj"], "payload": "Cusan Milan" }}'
+
+# Recommendation RESPONSE
+PUBLISH gp2p_tl2nl '{"type": "tl2nl_recommendation_response", "version": 1, "data": {"request_id": "someId", "recipient": "foo", "payload": "<blackbox for TL>"}}'
+

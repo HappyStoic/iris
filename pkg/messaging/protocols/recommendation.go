@@ -28,6 +28,12 @@ type RedisNl2TlRecommendationRequest struct {
 	Payload   interface{}        `json:"payload"`
 }
 
+type RedisTl2NlRecommendationResponse struct {
+	RequestId string      `json:"request_id"`
+	Recipient string      `json:"recipient"`
+	Payload   interface{} `json:"payload"`
+}
+
 type RedisNl2TlRecommendationResponse []*Recommendation
 type Recommendation struct {
 	Sender  utils.PeerMetadata `json:"sender"`
@@ -110,7 +116,7 @@ func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
 	}
 	err = rp.respStorage.AddResponse(recomResp.RequestId, recomResp)
 	if err != nil {
-		log.Errorf("error adding response to respStorage with id %s: %s", recomResp.RequestId, err)
+		log.Errorf("error adding response to respStorage with id '%s': '%s'", recomResp.RequestId, err)
 		return
 	}
 	log.Debug("p2p recommendation response was successfully put into response storage")
@@ -207,12 +213,60 @@ func (rp *RecommendationProtocol) createP2PRecomRequest(payload interface{}) (*p
 	}
 	signature, err := rp.SignProtoMessage(protoMsg)
 	if err != nil {
-		return nil, errors.WithMessage(err, "error generating signature for new recommendation request: ")
+		return nil, errors.WithMessage(err, "error generating signature for new p2p recommendation request: ")
 	}
 	protoMsg.Metadata.Signature = signature
 	return protoMsg, err
 }
 
 func (rp *RecommendationProtocol) onRedisRecommendationResponse(data []byte) {
-	// TODO
+	redisResponse := RedisTl2NlRecommendationResponse{}
+	err := json.Unmarshal(data, &redisResponse)
+	if err != nil {
+		log.Errorf("error unmarshalling RedisTl2NlRecommendationResponse from redis: %s", err)
+		return
+	}
+	log.Debug("received recommendation response from TL")
+
+	p2presponse, err := rp.createP2PRecomResponse(redisResponse.RequestId, redisResponse.Payload)
+	if err != nil {
+		log.Errorf("error creating p2p recommendation response: %s", err)
+		return
+	}
+	pid, err := peer.Decode(redisResponse.Recipient)
+	if err != nil {
+		log.Errorf("error decoding recipient id %s: %s", redisResponse.Recipient, err)
+		return
+	}
+
+	log.Debugf("sending recommendation response to recipient %s", pid)
+	err = rp.SendProtoMessage(pid, p2pRecomResponseProtocol, p2presponse)
+	if err != nil {
+		log.Errorf("error sending recommendation response to node %s: %s", pid, err)
+		return
+	}
+	log.Debugf("handler onRedisRecommendationResponse successfully ended")
+}
+
+func (rp *RecommendationProtocol) createP2PRecomResponse(requstId string, payload interface{}) (*pb.RecommendationResponse, error) {
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	msgMetaData, err := rp.NewProtoMetaData()
+	if err != nil {
+		return nil, errors.WithMessage(err, "error generating new proto metadata: ")
+	}
+
+	protoMsg := &pb.RecommendationResponse{
+		RequestId: requstId,
+		Metadata:  msgMetaData,
+		Payload:   payloadBytes,
+	}
+	signature, err := rp.SignProtoMessage(protoMsg)
+	if err != nil {
+		return nil, errors.WithMessage(err, "error generating signature for new p2p recommendation response: ")
+	}
+	protoMsg.Metadata.Signature = signature
+	return protoMsg, err
 }
