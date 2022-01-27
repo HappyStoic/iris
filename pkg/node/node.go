@@ -27,6 +27,7 @@ type Node struct {
 	host.Host                // TODO is host really important here?
 	*protocols.AlertProtocol // TODO are protocols really important here?
 	*protocols.RecommendationProtocol
+	*protocols.IntelligenceProtocol
 
 	conf *config.Config
 	ctx  context.Context
@@ -95,6 +96,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient)
 	n.AlertProtocol = protocols.NewAlertProtocol(protoUtils)
 	n.RecommendationProtocol = protocols.NewRecommendationProtocol(ctx, protoUtils, &conf.ProtocolSettings.Recommendation)
+	n.IntelligenceProtocol = protocols.NewIntelligenceProtocol(ctx, protoUtils, &conf.ProtocolSettings.Intelligence)
 
 	return n, nil
 }

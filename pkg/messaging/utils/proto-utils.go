@@ -86,7 +86,7 @@ func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 }
 
 func (pu *ProtoUtils) MetadataOfPeer(id string) PeerMetadata {
-	// TODO make organisations work
+	// TODO make organisations work (probably use PeerIdentity from pb package)
 	return PeerMetadata{
 		Id:            id,
 		Organisations: []string{"prdel"},

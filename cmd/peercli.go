@@ -28,6 +28,10 @@ var log = logging.Logger("p2pnetwork")
 // TODO: add network notiffee and send update to TL through redis when peers connecgt/disconnect
 // TODO: use msgs timestamp to throw away old messages?
 // TODO: can you spoof QUIC sender? If not, tell TL if stream is corrupted and cannot be deserialized so the IP can be punished
+// TODO: what peers to ask when asking for intelligence? Or ask all of them? How to rotate them? Maybe use some probability distributiion along with reliability?
+// TODO: responseStorage should not wait for responses from peers that disconnect. Otherwise when that happens it's gonna wait always till the timeout occurs?
+// TODO: wait in storageResponse only for responses from peers where requests were sucessfully sent (err was nil)
+// TODO: maybe I should send all messages in new goroutine so it does not black? (especially p2p newStream functions?)
 
 func loadConfig() (*config.Config, error) {
 	var c config.Config

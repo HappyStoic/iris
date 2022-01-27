@@ -55,11 +55,12 @@ func NewResponseStorage(respProc ResponsesProcessor) *RespStorageManager {
 	}
 }
 
-func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxResp int, ttl time.Duration) error {
+func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxResp int, timeout time.Duration) error {
 	_, exists := rsm.storageMap[id]
 	if exists {
 		return errors.Errorf("there is already storage for responses on request with id %s", id)
 	}
+	log.Debugf("starting waiting for %d responses with id %s with timeout %s", maxResp, id, timeout)
 
 	// create storage for this id
 	s := NewStorage(maxResp)
@@ -78,8 +79,8 @@ func (rsm *RespStorageManager) StartWaiting(ctx context.Context, id string, maxR
 					return
 				}
 
-			case <-time.After(ttl):
-				log.Infof("imout elapsed waiting for the responses with storage id %s, got %s responses", id,
+			case <-time.After(timeout):
+				log.Infof("timeout elapsed waiting for the responses with storage id %s, got %s responses", id,
 					s.status())
 				rsm.finish(id)
 				return

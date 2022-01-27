@@ -93,7 +93,7 @@ func (rc *RedisClient) subscribeChannel(channel string) {
 					wg.Done()
 				}()
 			} else {
-				log.Errorf("Type %s in RedisBaseMessage is unknown", baseMsg.Type)
+				log.Errorf("received unknown RedisBaseMessage type '%s' from TL", baseMsg.Type)
 			}
 		}
 		wg.Wait()

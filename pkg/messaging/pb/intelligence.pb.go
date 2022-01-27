@@ -20,16 +20,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type Person struct {
+type IntelligenceReqEnvelope struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	IntelligenceRequest *IntelligenceRequest `protobuf:"bytes,1,opt,name=intelligenceRequest,proto3" json:"intelligenceRequest,omitempty"`
+	Ttl                 uint32               `protobuf:"varint,2,opt,name=ttl,proto3" json:"ttl,omitempty"`                    // to how many more peers this request can be forwarded to before aggregating responses
+	ParentTimeout       string               `protobuf:"bytes,3,opt,name=parentTimeout,proto3" json:"parentTimeout,omitempty"` // how long is parent waiting to get response.
 }
 
-func (x *Person) Reset() {
-	*x = Person{}
+func (x *IntelligenceReqEnvelope) Reset() {
+	*x = IntelligenceReqEnvelope{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_intelligence_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -37,13 +39,13 @@ func (x *Person) Reset() {
 	}
 }
 
-func (x *Person) String() string {
+func (x *IntelligenceReqEnvelope) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*Person) ProtoMessage() {}
+func (*IntelligenceReqEnvelope) ProtoMessage() {}
 
-func (x *Person) ProtoReflect() protoreflect.Message {
+func (x *IntelligenceReqEnvelope) ProtoReflect() protoreflect.Message {
 	mi := &file_intelligence_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -55,27 +57,181 @@ func (x *Person) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use Person.ProtoReflect.Descriptor instead.
-func (*Person) Descriptor() ([]byte, []int) {
+// Deprecated: Use IntelligenceReqEnvelope.ProtoReflect.Descriptor instead.
+func (*IntelligenceReqEnvelope) Descriptor() ([]byte, []int) {
 	return file_intelligence_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *Person) GetName() string {
+func (x *IntelligenceReqEnvelope) GetIntelligenceRequest() *IntelligenceRequest {
 	if x != nil {
-		return x.Name
+		return x.IntelligenceRequest
+	}
+	return nil
+}
+
+func (x *IntelligenceReqEnvelope) GetTtl() uint32 {
+	if x != nil {
+		return x.Ttl
+	}
+	return 0
+}
+
+func (x *IntelligenceReqEnvelope) GetParentTimeout() string {
+	if x != nil {
+		return x.ParentTimeout
 	}
 	return ""
+}
+
+type IntelligenceRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metadata *MetaData `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Payload  []byte    `protobuf:"bytes,4,opt,name=payload,proto3" json:"payload,omitempty"`
+}
+
+func (x *IntelligenceRequest) Reset() {
+	*x = IntelligenceRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_intelligence_proto_msgTypes[1]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *IntelligenceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IntelligenceRequest) ProtoMessage() {}
+
+func (x *IntelligenceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_intelligence_proto_msgTypes[1]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IntelligenceRequest.ProtoReflect.Descriptor instead.
+func (*IntelligenceRequest) Descriptor() ([]byte, []int) {
+	return file_intelligence_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *IntelligenceRequest) GetMetadata() *MetaData {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *IntelligenceRequest) GetPayload() []byte {
+	if x != nil {
+		return x.Payload
+	}
+	return nil
+}
+
+type IntelligenceResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Metadata  *MetaData `protobuf:"bytes,1,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	RequestId string    `protobuf:"bytes,2,opt,name=requestId,proto3" json:"requestId,omitempty"`
+	Responses [][]byte  `protobuf:"bytes,3,rep,name=responses,proto3" json:"responses,omitempty"` // Each response is encrypted object of "payload" and "sender" metadata so intermediate peers cannot read it
+}
+
+func (x *IntelligenceResponse) Reset() {
+	*x = IntelligenceResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_intelligence_proto_msgTypes[2]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *IntelligenceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IntelligenceResponse) ProtoMessage() {}
+
+func (x *IntelligenceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_intelligence_proto_msgTypes[2]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IntelligenceResponse.ProtoReflect.Descriptor instead.
+func (*IntelligenceResponse) Descriptor() ([]byte, []int) {
+	return file_intelligence_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *IntelligenceResponse) GetMetadata() *MetaData {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *IntelligenceResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *IntelligenceResponse) GetResponses() [][]byte {
+	if x != nil {
+		return x.Responses
+	}
+	return nil
 }
 
 var File_intelligence_proto protoreflect.FileDescriptor
 
 var file_intelligence_proto_rawDesc = []byte{
 	0x0a, 0x12, 0x69, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67, 0x65, 0x6e, 0x63, 0x65, 0x2e, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x70, 0x62, 0x22, 0x1c, 0x0a, 0x06, 0x50, 0x65, 0x72, 0x73,
-	0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
-	0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x42, 0x14, 0x5a, 0x12, 0x2e, 0x2f, 0x70, 0x6b, 0x67, 0x2f,
-	0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x69, 0x6e, 0x67, 0x2f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72,
-	0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x6f, 0x74, 0x6f, 0x12, 0x02, 0x70, 0x62, 0x1a, 0x0a, 0x62, 0x61, 0x73, 0x65, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x22, 0x9c, 0x01, 0x0a, 0x17, 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69,
+	0x67, 0x65, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x45, 0x6e, 0x76, 0x65, 0x6c, 0x6f, 0x70, 0x65,
+	0x12, 0x49, 0x0a, 0x13, 0x69, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67, 0x65, 0x6e, 0x63, 0x65,
+	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x17, 0x2e,
+	0x70, 0x62, 0x2e, 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67, 0x65, 0x6e, 0x63, 0x65, 0x52,
+	0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x13, 0x69, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67,
+	0x65, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x10, 0x0a, 0x03, 0x74,
+	0x74, 0x6c, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x03, 0x74, 0x74, 0x6c, 0x12, 0x24, 0x0a,
+	0x0d, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74, 0x18, 0x03,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x0d, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x54, 0x69, 0x6d, 0x65,
+	0x6f, 0x75, 0x74, 0x22, 0x59, 0x0a, 0x13, 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67, 0x65,
+	0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x28, 0x0a, 0x08, 0x6d, 0x65,
+	0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70,
+	0x62, 0x2e, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61,
+	0x64, 0x61, 0x74, 0x61, 0x12, 0x18, 0x0a, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x07, 0x70, 0x61, 0x79, 0x6c, 0x6f, 0x61, 0x64, 0x22, 0x7c,
+	0x0a, 0x14, 0x49, 0x6e, 0x74, 0x65, 0x6c, 0x6c, 0x69, 0x67, 0x65, 0x6e, 0x63, 0x65, 0x52, 0x65,
+	0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x28, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61,
+	0x74, 0x61, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x70, 0x62, 0x2e, 0x4d, 0x65,
+	0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61,
+	0x12, 0x1c, 0x0a, 0x09, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x09, 0x52, 0x09, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x64, 0x12, 0x1c,
+	0x0a, 0x09, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28,
+	0x0c, 0x52, 0x09, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x73, 0x42, 0x14, 0x5a, 0x12,
+	0x2e, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x69, 0x6e, 0x67, 0x2f,
+	0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -90,16 +246,22 @@ func file_intelligence_proto_rawDescGZIP() []byte {
 	return file_intelligence_proto_rawDescData
 }
 
-var file_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
+var file_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
 var file_intelligence_proto_goTypes = []interface{}{
-	(*Person)(nil), // 0: pb.Person
+	(*IntelligenceReqEnvelope)(nil), // 0: pb.IntelligenceReqEnvelope
+	(*IntelligenceRequest)(nil),     // 1: pb.IntelligenceRequest
+	(*IntelligenceResponse)(nil),    // 2: pb.IntelligenceResponse
+	(*MetaData)(nil),                // 3: pb.MetaData
 }
 var file_intelligence_proto_depIdxs = []int32{
-	0, // [0:0] is the sub-list for method output_type
-	0, // [0:0] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	1, // 0: pb.IntelligenceReqEnvelope.intelligenceRequest:type_name -> pb.IntelligenceRequest
+	3, // 1: pb.IntelligenceRequest.metadata:type_name -> pb.MetaData
+	3, // 2: pb.IntelligenceResponse.metadata:type_name -> pb.MetaData
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_intelligence_proto_init() }
@@ -107,9 +269,34 @@ func file_intelligence_proto_init() {
 	if File_intelligence_proto != nil {
 		return
 	}
+	file_base_proto_init()
 	if !protoimpl.UnsafeEnabled {
 		file_intelligence_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Person); i {
+			switch v := v.(*IntelligenceReqEnvelope); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_intelligence_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*IntelligenceRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_intelligence_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*IntelligenceResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -127,7 +314,7 @@ func file_intelligence_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_intelligence_proto_rawDesc,
 			NumEnums:      0,
-			NumMessages:   1,
+			NumMessages:   3,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

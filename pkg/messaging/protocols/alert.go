@@ -80,7 +80,7 @@ func (ap *AlertProtocol) createP2PAlert(payload interface{}) (*pb.Alert, error) 
 	}
 
 	// store this msg as seen in case it comes back from another peer
-	ap.NewMsgSeen(msgMetaData.Id)
+	ap.NewMsgSeen(msgMetaData.Id, ap.Host.ID())
 
 	protoMsg := &pb.Alert{
 		Metadata: msgMetaData,
@@ -122,7 +122,7 @@ func (ap *AlertProtocol) onP2PAlertMessage(s network.Stream) {
 		log.Debugf("received already seen alert message, forwarded by %s", s.Conn().RemotePeer())
 		return
 	}
-	ap.NewMsgSeen(alert.Metadata.Id)
+	ap.NewMsgSeen(alert.Metadata.Id, s.Conn().RemotePeer())
 
 	err = ap.AuthenticateMessage(alert, alert.Metadata)
 	if err != nil {

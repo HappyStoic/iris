@@ -42,10 +42,18 @@ type Redis struct {
 
 type ProtocolSettings struct {
 	Recommendation RecommendationSettings
+	Intelligence   IntelligenceSettings
 }
 
 type RecommendationSettings struct {
 	Timeout time.Duration
+}
+
+type IntelligenceSettings struct {
+	MaxTtl           uint32        // max ttl the peer will forward to prevent going too deep
+	Ttl              uint32        // ttl to set when initiating intelligence request
+	MaxParentTimeout time.Duration // max allowed timeout parent is waiting (so he does not make me stuck waiting forever)
+	RootTimeout      time.Duration // timeout for responses after initiating intelligence request
 }
 
 // Addr constructs address from host and port

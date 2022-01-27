@@ -2,6 +2,24 @@ syntax = "proto3";
 package pb;
 option go_package = "./pkg/messaging/pb";
 
-message Person {
-  string name = 1;
+import  "base.proto";
+
+message IntelligenceReqEnvelope {
+  IntelligenceRequest intelligenceRequest = 1;
+
+  uint32 ttl = 2;             // to how many more peers this request can be forwarded to before aggregating responses
+  string parentTimeout = 3;   // how long is parent waiting to get response.
+}
+
+message IntelligenceRequest {
+  MetaData metadata = 1;
+
+  bytes payload = 4;
+}
+
+message IntelligenceResponse {
+  MetaData metadata = 1;
+
+  string requestId = 2;
+  repeated bytes responses = 3;  // Each response is encrypted object of "payload" and "sender" metadata so intermediate peers cannot read it
 }

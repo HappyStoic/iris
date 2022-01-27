@@ -13,7 +13,12 @@ Redis:
 ProtocolSettings:
   Recommendation:
     Timeout: 10s
+  Intelligence:
+    MaxTtl: 5
+    Ttl: 5
+    RootTimeout: 10s
+    MaxRootTimeout: 10s
 
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWMoHzpFyguN6SWKgs6KQt9tLf6RTfqqeDuv8foFjnMPfY"
+   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWQoFvNdHprFHw5xfCsmtdM3F9DqnwNu9NrTmPDY2whrkE"

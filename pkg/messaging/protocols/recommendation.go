@@ -29,9 +29,9 @@ type RedisNl2TlRecommendationRequest struct {
 }
 
 type RedisTl2NlRecommendationResponse struct {
-	RequestId string      `json:"request_id"`
-	Recipient string      `json:"recipient"`
-	Payload   interface{} `json:"payload"`
+	RequestId   string      `json:"request_id"`
+	RecipientId string      `json:"recipient_id"`
+	Payload     interface{} `json:"payload"`
 }
 
 type RedisNl2TlRecommendationResponse []*Recommendation
@@ -164,13 +164,13 @@ func (rp *RecommendationProtocol) onRedisRecommendationRequest(data []byte) {
 }
 
 func (rp *RecommendationProtocol) initiateP2PRecomRequest(req *RedisTl2NlRecommendationRequest) {
+	if len(req.ReceiverIds) == 0 {
+		log.Warn("no receivers specified for recommendation request")
+		return
+	}
 	p2pRequest, err := rp.createP2PRecomRequest(req.Payload)
 	if err != nil {
 		log.Errorf("error creating p2p recommendation request: %s", err)
-		return
-	}
-	if len(req.ReceiverIds) == 0 {
-		log.Warn("no receivers specified for recommendation request")
 		return
 	}
 	// start waiter, who will process all responses when they are aggregated or timeout elapses
@@ -233,9 +233,9 @@ func (rp *RecommendationProtocol) onRedisRecommendationResponse(data []byte) {
 		log.Errorf("error creating p2p recommendation response: %s", err)
 		return
 	}
-	pid, err := peer.Decode(redisResponse.Recipient)
+	pid, err := peer.Decode(redisResponse.RecipientId)
 	if err != nil {
-		log.Errorf("error decoding recipient id %s: %s", redisResponse.Recipient, err)
+		log.Errorf("error decoding recipient id %s: %s", redisResponse.RecipientId, err)
 		return
 	}
 

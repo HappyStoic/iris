@@ -12,6 +12,15 @@ Redis:
   Host: 192.168.0.69
   Tl2NlChannel: gp2p_tl2nl4
 
+ProtocolSettings:
+  Recommendation:
+    Timeout: 10s
+  Intelligence:
+    MaxTtl: 5
+    Ttl: 5
+    RootTimeout: 10s
+    MaxRootTimeout: 10s
+
 PeerDiscovery:
   ListOfMultiAddresses:
     - "/ip4/192.168.0.10/udp/9001/quic 12D3KooWNxiCsZFyUFpLFNKDLEQDUK36myifqufnnveK1jycMoJ8"
