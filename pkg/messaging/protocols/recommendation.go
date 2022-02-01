@@ -3,6 +3,7 @@ package protocols
 import (
 	"context"
 	"encoding/json"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -45,7 +46,7 @@ type RecommendationProtocol struct {
 	*utils.ProtoUtils
 
 	ctx         context.Context
-	respStorage *utils.RespStorageManager
+	respStorage *utils.ResponseAggregator
 	settings    *config.RecommendationSettings
 }
 
@@ -57,7 +58,7 @@ func NewRecommendationProtocol(ctx context.Context,
 		ctx:        ctx,
 		settings:   c,
 	}
-	rp.respStorage = utils.NewResponseStorage(rp.onAggregatedP2PResponses)
+	rp.respStorage = utils.NewResponseAggregator(rp.onAggregatedP2PResponses)
 
 	_ = rp.RedisClient.SubscribeCallback("tl2nl_recommendation_request", rp.onRedisRecommendationRequest)
 	_ = rp.RedisClient.SubscribeCallback("tl2nl_recommendation_response", rp.onRedisRecommendationResponse)
@@ -122,7 +123,7 @@ func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
 	log.Debug("p2p recommendation response was successfully put into response storage")
 }
 
-func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses []proto.Message) {
+func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses []proto.Message, _ *utils.StorageMetadata) {
 	if len(responses) == 0 {
 		log.Errorf("aggregated zero responses, not sending any response to Redis")
 		return
@@ -140,7 +141,7 @@ func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses [
 		}
 
 		recomRedisResp = append(recomRedisResp, &Recommendation{
-			Sender:  rp.MetadataOfPeer(resp.Metadata.Id),
+			Sender:  rp.MetadataOfPeer(resp.Metadata.OriginalSender.NodeId),
 			Payload: v,
 		})
 	}
@@ -174,7 +175,7 @@ func (rp *RecommendationProtocol) initiateP2PRecomRequest(req *RedisTl2NlRecomme
 		return
 	}
 	// start waiter, who will process all responses when they are aggregated or timeout elapses
-	err = rp.respStorage.StartWaiting(rp.ctx, p2pRequest.Metadata.Id, len(req.ReceiverIds), rp.settings.Timeout)
+	err = rp.respStorage.StartWaiting(rp.ctx, p2pRequest.Metadata.Id, nil, len(req.ReceiverIds), rp.settings.Timeout)
 	if err != nil {
 		log.Errorf("error when starting to wait for recommendation responses: %s", err)
 		return

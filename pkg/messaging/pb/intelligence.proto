@@ -14,12 +14,24 @@ message IntelligenceReqEnvelope {
 message IntelligenceRequest {
   MetaData metadata = 1;
 
-  bytes payload = 4;
+  bytes payload = 2;
 }
 
 message IntelligenceResponse {
   MetaData metadata = 1;
 
+  // copied ID that was in metadata of IntelligenceRequest
   string requestId = 2;
-  repeated bytes responses = 3;  // Each response is encrypted object of "payload" and "sender" metadata so intermediate peers cannot read it
+
+  // false if receiver decided not to process the request. For example he might have already received this request from
+  // another peer he's connected to. Or he has no computational resources ATM.
+  bool processed = 3;
+
+  // Each response is encrypted SingleEntityResponse object
+  repeated bytes responses = 4;
+}
+
+message SingleEntityResponse {
+  MetaData metadata = 1;
+  bytes payload = 2;
 }
