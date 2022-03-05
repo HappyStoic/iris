@@ -13,10 +13,21 @@ type Config struct {
 	Server           Server
 	Redis            Redis
 	ProtocolSettings ProtocolSettings
+	Organisations    OrgConfig
 }
 
 type Server struct {
 	Port uint32
+}
+
+type OrgConfig struct {
+	Trustworthy []string
+	Signatures  []OrgSig
+}
+
+type OrgSig struct {
+	ID        string
+	Signature string
 }
 
 type PeerDiscovery struct {

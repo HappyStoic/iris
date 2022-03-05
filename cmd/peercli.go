@@ -32,6 +32,9 @@ var log = logging.Logger("p2pnetwork")
 // TODO: responseStorage should not wait for responses from peers that disconnect. Otherwise when that happens it's gonna wait always till the timeout occurs?
 // TODO: wait in storageResponse only for responses from peers where requests were sucessfully sent (err was nil)
 // TODO: maybe I should send all messages in new goroutine so it does not black? (especially p2p newStream functions?)
+// TODO: create tool to generate orgs priv/pub key and tool sign peers
+// TODO: reporting redis-cli channel
+// TODO: verify other peers' organisations signatures
 
 func loadConfig() (*config.Config, error) {
 	var c config.Config
@@ -78,7 +81,8 @@ func main() {
 	}
 
 	// create p2p node
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	localNode, err := node.NewNode(conf, ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -93,7 +97,7 @@ func main() {
 
 	// temporary playground
 	doSomething := len(os.Getenv("DO_SOMETHING")) > 0
-	localNode.Start(doSomething)
+	localNode.Start(ctx, doSomething)
 
 	log.Infof("finished, program terminating...")
 }

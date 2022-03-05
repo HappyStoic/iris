@@ -3,15 +3,17 @@ package node
 import (
 	"context"
 	"fmt"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/pkg/errors"
+	"happystoic/p2pnetwork/pkg/org"
+	"happystoic/p2pnetwork/pkg/reliability"
 
 	"happystoic/p2pnetwork/pkg/config"
 	"happystoic/p2pnetwork/pkg/cryptotools"
@@ -29,8 +31,11 @@ type Node struct {
 	*protocols.RecommendationProtocol
 	*protocols.IntelligenceProtocol
 
-	conf *config.Config
-	ctx  context.Context
+	idht    *dht.IpfsDHT
+	relBook *reliability.Book
+	orgBook *org.Book
+	conf    *config.Config
+	ctx     context.Context
 }
 
 func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
@@ -51,6 +56,18 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
+	metricsTest := metrics.NewBandwidthCounter() // TODO utilize metrics somehow
+	//go func() {
+	//	for {
+	//		time.Sleep(10 * time.Second)
+	//		stats := metricsTest.GetBandwidthTotals()
+	//		fmt.Printf("total in: %d\n", stats.TotalIn)
+	//		fmt.Printf("total out: %d\n", stats.TotalOut)
+	//		fmt.Printf("rate in: %f\n", stats.RateIn)
+	//		fmt.Printf("rate out: %f\n", stats.RateOut)
+	//	}
+	//}()
+
 	p2phost, err := libp2p.New(
 		// Use the keypair we generated
 		libp2p.Identity(key),
@@ -65,7 +82,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		libp2p.NATPortMap(),
 		// Let this host use the DHT to find other hosts
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			idht, err = dht.New(ctx, h)
+			idht, err = dht.New(ctx, h, dht.Mode(dht.ModeServer))
 			return idht, err
 		}),
 		// Let this host use relays and advertise itself on relays if
@@ -79,29 +96,82 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		// This service is highly rate-limited and should not cause any
 		// performance issues.
 		libp2p.EnableNATService(),
+		libp2p.BandwidthReporter(metricsTest),
 	)
-	n := &Node{
-		Host: p2phost,
-		conf: conf,
-		ctx:  ctx,
+	if err != nil {
+		return nil, err
 	}
+
 	// create redis client
 	redisClient, err := clients.NewRedisClient(&conf.Redis, ctx)
 	if err != nil {
 		return nil, errors.Errorf("error creating redis client: %s", err)
 	}
 
+	// setup books
+	relBook := reliability.NewBook()
+	orgBook, err := org.NewBook(&conf.Organisations, idht)
+	if err != nil {
+		return nil, errors.Errorf("error creating org book: %s", err)
+	}
+	orgBook.RunUpdater(ctx)
+
+	n := &Node{
+		Host:    p2phost,
+		idht:    idht,
+		relBook: relBook,
+		orgBook: orgBook,
+		conf:    conf,
+		ctx:     ctx,
+	}
+
 	// setup all protocols
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
-	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient)
+	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook)
 	n.AlertProtocol = protocols.NewAlertProtocol(protoUtils)
 	n.RecommendationProtocol = protocols.NewRecommendationProtocol(ctx, protoUtils, &conf.ProtocolSettings.Recommendation)
 	n.IntelligenceProtocol = protocols.NewIntelligenceProtocol(ctx, protoUtils, &conf.ProtocolSettings.Intelligence)
+	_ = protocols.NewReliabilityReceiver(protoUtils, relBook)
 
 	return n, nil
 }
 
 func (n *Node) ConnectToInitPeers() {
+	// TODO use this as example how to find init peers of my orgs
+	//go func() {
+	//	for {
+	//		//key := "prdelOrganizace"
+	//		//valBytes, err := idht.GetValue(context.Background(), key)
+	//		//if err != nil {
+	//		//	log.Errorf("error in GetValue: %s", err)
+	//		//} else {
+	//		//	log.Debugf("value for '%s' is '%s'", key, valBytes)
+	//		//}
+	//		c, err := cid.Decode("bafzbeigai3eoy2ccc7ybwjfz5r3rdxqrinwi4rwytly24tdbh6yk7zslrm")
+	//		if err != nil {
+	//			log.Errorf("%s", err)
+	//		}
+	//
+	//		//err = idht.Provide(context.Background(), c, false)
+	//		//if err != nil {
+	//		//	log.Errorf("%s", err)
+	//		//}
+	//		//break
+	//
+	//		providers, err := idht.FindProviders(context.Background(), c)
+	//		if err != nil {
+	//			log.Errorf("error in FindProviders: %s", err)
+	//		} else {
+	//			log.Debugf("providers for '%s'", c.String())
+	//			for _, p := range providers {
+	//				log.Debugf("\t%s", p.String())
+	//			}
+	//		}
+	//		time.Sleep(time.Second * 5)
+	//	}
+	//}()
+	//p2phost.Peerstore().PubKey()
+
 	initPeers, err := peer_discovery.GetInitPeers(n.conf.PeerDiscovery)
 	if len(initPeers) == 0 {
 		log.Warnf("got 0 init peers, cannot make initial contact with the network")
@@ -115,9 +185,43 @@ func (n *Node) ConnectToInitPeers() {
 		}
 		log.Infof("successfuly connected to peer: %s", addr.ID)
 	}
+
+	// TODO remove this
+	//go func() {
+	//time.Sleep(time.Second * 5)
+	//id, _ := peer.Decode("12D3KooWEn4k97RoqSjn5kqPVU8e9zrAS3rMN1NNaTbtu9o83EhT")
+	//ai := peer.AddrInfo{
+	//	ID:    id,
+	//	Addrs: nil,
+	//}
+	//err = n.Connect(n.ctx, ai)
+	//if err != nil {
+	//	log.Errorf("error connecting to peer %s: %s\n", ai.ID, err)
+	//} else {
+	//	log.Infof("successfuly connected to peer: %s", ai.ID)
+	//}
+	//}()
+	//
 }
 
-func (n *Node) Start(doSomething bool) {
+// advertiseMyOrgs tells the network that I am member of my organizations
+func (n *Node) advertiseMyOrgs(ctx context.Context) {
+	for o, _ := range n.orgBook.MySignatures {
+		c, err := o.Cid()
+		if err != nil {
+			log.Errorf("error converting org to cid: %s", err)
+			continue
+		}
+		err = n.idht.Provide(ctx, c, true)
+		if err != nil {
+			log.Errorf("error putting myself as member of org %s to a DHT: %s ", o.String(), err)
+		}
+	}
+}
+
+func (n *Node) Start(ctx context.Context, doSomething bool) {
+	n.advertiseMyOrgs(ctx)
+
 	if doSomething {
 		log.Info("Doing something (not really)")
 		//n.InitiateP2PAlert([]byte("prdel!!! zachovejte paniku, cusasaan Milan"))

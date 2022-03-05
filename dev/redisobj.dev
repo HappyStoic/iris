@@ -5,7 +5,7 @@ PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_alert", "version": 1, "data": { "payload": 
 PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_recommendation_request", "version": 1, "data": { "receiver_ids": ["12D3KooWPDXBZk8Nkpb4ao4Je3A9X5kYmu4wJpct2Pg6Znu3hwZj"], "payload": "Cusan Milan" }}'
 
 # Recommendation RESPONSE
-PUBLISH gp2p_tl2nl '{"type": "tl2nl_recommendation_response", "version": 1, "data": {"request_id": "someId", "recipient_id": "foo", "payload": "<blackbox for TL>"}}'
+PUBLISH gp2p_tl2nl0 '{"type": "tl2nl_recommendation_response", "version": 1, "data": {"request_id": "someId", "recipient_id": "foo", "payload": "<blackbox for TL>"}}'
 
 # Intelligence REQUEST
 PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_intelligence_request", "version": 1, "data": {"payload": "<blackbox for TL>"}}'

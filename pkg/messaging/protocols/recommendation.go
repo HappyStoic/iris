@@ -89,7 +89,7 @@ func (rp *RecommendationProtocol) onP2PRequest(s network.Stream) {
 	}
 	requestToRedis := RedisNl2TlRecommendationRequest{
 		RequestId: recomReq.Metadata.Id,
-		Sender:    rp.MetadataOfPeer(recomReq.Metadata.OriginalSender.NodeId),
+		Sender:    rp.MetadataOfPeer(s.Conn().RemotePeer()),
 		Payload:   v,
 	}
 	err = rp.RedisClient.PublishMessage("nl2tl_recommendation_request", requestToRedis)
@@ -140,8 +140,12 @@ func (rp *RecommendationProtocol) onAggregatedP2PResponses(_ string, responses [
 			continue
 		}
 
+		senderPeerId, err := peer.Decode(resp.Metadata.OriginalSender.NodeId)
+		if err != nil {
+			log.Errorf("error decoding peer ID: %s", err)
+		}
 		recomRedisResp = append(recomRedisResp, &Recommendation{
-			Sender:  rp.MetadataOfPeer(resp.Metadata.OriginalSender.NodeId),
+			Sender:  rp.MetadataOfPeer(senderPeerId),
 			Payload: v,
 		})
 	}

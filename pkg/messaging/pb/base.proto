@@ -18,5 +18,6 @@ message PeerIdentity {
 }
 
 message Organisation {
-  // TODO fill in
+  string orgId = 1;
+  string signature = 2;
 }

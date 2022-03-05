@@ -227,8 +227,13 @@ func (ip *IntelligenceProtocol) sendIntelligenceResponseToRedis(responses [][]by
 			continue
 		}
 
+		senderPeerId, err := peer.Decode(singleResp.Metadata.OriginalSender.NodeId)
+		if err != nil {
+			log.Errorf("error decoding peer ID: %s", err)
+		}
+
 		recomRedisResp = append(recomRedisResp, &IntelligenceResponse{
-			Sender:  ip.MetadataOfPeer(singleResp.Metadata.OriginalSender.NodeId),
+			Sender:  ip.MetadataOfPeer(senderPeerId),
 			Payload: v,
 		})
 	}
@@ -409,13 +414,17 @@ func (ip *IntelligenceProtocol) processP2PRequest(e *pb.IntelligenceReqEnvelope,
 		return err
 	}
 
+	senderPeerId, err := peer.Decode(e.IntelligenceRequest.Metadata.OriginalSender.NodeId)
+	if err != nil {
+		log.Errorf("error decoding peer ID: %s", err)
+	}
 	// send request to redis
 	requestToRedis := RedisNl2TlIntelRequest{
 		RequestId: e.IntelligenceRequest.Metadata.Id,
-		Sender:    ip.MetadataOfPeer(e.IntelligenceRequest.Metadata.OriginalSender.NodeId),
+		Sender:    ip.MetadataOfPeer(senderPeerId),
 		Payload:   v,
 	}
-	err := ip.RedisClient.PublishMessage("nl2tl_intelligence_request", requestToRedis)
+	err = ip.RedisClient.PublishMessage("nl2tl_intelligence_request", requestToRedis)
 	if err != nil {
 		return err
 	}

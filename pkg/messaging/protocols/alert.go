@@ -102,7 +102,7 @@ func (ap *AlertProtocol) createRedisAlert(s network.Stream, payload []byte) (*Re
 	}
 
 	return &RedisAlertResponseData{
-		Sender:  ap.MetadataOfPeer(s.Conn().RemotePeer().String()),
+		Sender:  ap.MetadataOfPeer(s.Conn().RemotePeer()),
 		Payload: v,
 	}, nil
 }

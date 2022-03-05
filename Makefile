@@ -1,5 +1,8 @@
 PROTOBUF_DIR=`pwd`/pkg/messaging/pb
 
+run-debug:
+	GOLOG_LOG_LEVEL="dht=debug,p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
+
 run:
 	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
 

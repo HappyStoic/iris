@@ -8,7 +8,7 @@ Server:
 
 Redis:
   Host: 127.0.0.1
-  Tl2NlChannel: gp2p_tl2nl2
+  Tl2NlChannel: gp2p_tl2nl1
 
 ProtocolSettings:
   Recommendation:
@@ -21,4 +21,5 @@ ProtocolSettings:
 
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/127.0.0.1/udp/9000/quic 12D3KooWNDWAZ5zMzqzAERLE2f8R5TZFAqYNLffSPLW8NuEnUoGo"
+   - "/ip4/10.0.0.40/udp/9000/quic 12D3KooWSndoeEM8duZwTbJU1FCZSw3tMqKjFMCR9BfTweVSNPCx"
+#   - "/ip4/127.0.0.1/udp/9002/quic 12D3KooWFTf9mXfR5yN1oPv7wPNGMq7DfgPPmep9hREy5syuZ6ug"

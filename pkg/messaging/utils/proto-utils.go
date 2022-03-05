@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"happystoic/p2pnetwork/pkg/org"
 	"io/ioutil"
 	"time"
 
@@ -32,11 +33,12 @@ type ProtoUtils struct {
 
 	Host        host.Host
 	RedisClient *clients.RedisClient
+	OrgBook     *org.Book
 }
 
-func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient) *ProtoUtils {
+func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient, ob *org.Book) *ProtoUtils {
 	msgCache := newMessageCache()
-	return &ProtoUtils{ck, msgCache, host, client}
+	return &ProtoUtils{ck, msgCache, host, client, ob}
 }
 
 func (pu *ProtoUtils) ConnectedPeers() []peer.ID {
@@ -71,10 +73,19 @@ func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 		return nil, errors.New("Failed to get public key for sender from local node store.")
 	}
 
+	// get list of my orgs signatures TODO do this only once
+	orgs := make([]*pb.Organisation, 0, len(pu.OrgBook.MySignatures))
+	for o, sig := range pu.OrgBook.MySignatures {
+		orgs = append(orgs, &pb.Organisation{
+			OrgId:     o.String(),
+			Signature: sig,
+		})
+	}
+
 	sender := &pb.PeerIdentity{
 		NodeId:        pu.Host.ID().String(),
 		NodePubKey:    nodePubKey,
-		Organisations: nil,
+		Organisations: orgs,
 	}
 	metadata := &pb.MetaData{
 		OriginalSender: sender,
@@ -85,11 +96,10 @@ func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	return metadata, nil
 }
 
-func (pu *ProtoUtils) MetadataOfPeer(id string) PeerMetadata {
-	// TODO make organisations work (probably use PeerIdentity from pb package)
+func (pu *ProtoUtils) MetadataOfPeer(p peer.ID) PeerMetadata {
 	return PeerMetadata{
-		Id:            id,
-		Organisations: []string{"prdel"},
+		Id:            p.String(),
+		Organisations: pu.OrgBook.StringOrgsOfPeer(&p),
 	}
 }
 
