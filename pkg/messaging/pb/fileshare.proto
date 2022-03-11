@@ -1,0 +1,34 @@
+syntax = "proto3";
+package pb;
+option go_package = "./pkg/messaging/pb";
+
+import  "base.proto";
+
+message FileMetadata {
+  MetaData metadata = 1;
+
+  string cid = 2;
+  bytes description = 3;
+  repeated string rights = 4;
+
+  string severity = 5;
+  int64 expiredAt = 6;
+}
+
+message FileDownloadRequest {
+  MetaData metadata = 1;
+
+  string cid = 2;
+}
+
+message FileDownloadResponse {
+  MetaData metadata = 1;
+
+  string status = 2;
+  bytes data = 3;
+}
+
+
+
+
+

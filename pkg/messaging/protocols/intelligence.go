@@ -272,7 +272,7 @@ func (ip *IntelligenceProtocol) onP2PResponse(s network.Stream) {
 	log.Infof("received p2p intelligence response")
 	intelResp := &pb.IntelligenceResponse{}
 
-	err := ip.DeserializeMessageFromStream(s, intelResp)
+	err := ip.DeserializeMessageFromStream(s, intelResp, true)
 	if err != nil {
 		log.Errorf("error deserilising p2P intelligence response from stream: %s", err)
 		return
@@ -360,7 +360,7 @@ func (ip *IntelligenceProtocol) onP2PRequest(s network.Stream) {
 
 	// Deserialize the proto message
 	intelReqEnvelope := &pb.IntelligenceReqEnvelope{}
-	err := ip.DeserializeMessageFromStream(s, intelReqEnvelope)
+	err := ip.DeserializeMessageFromStream(s, intelReqEnvelope, true)
 	if err != nil {
 		log.Errorf("error deserilising p2p intelligence request from stream: %s", err)
 		return

@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"flag"
+	"math/rand"
 	"net"
 	"os"
+	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/pkg/errors"
@@ -35,6 +37,7 @@ var log = logging.Logger("p2pnetwork")
 // TODO: create tool to generate orgs priv/pub key and tool sign peers
 // TODO: reporting redis-cli channel
 // TODO: verify other peers' organisations signatures
+// TODO: maybe delete file meta after expired elapsed? right now ElapsedAt is not used
 
 func loadConfig() (*config.Config, error) {
 	var c config.Config
@@ -68,6 +71,8 @@ func checkUDPPortAvailability(port uint32) error {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	// load configuration
 	conf, err := loadConfig()
 	if err != nil {

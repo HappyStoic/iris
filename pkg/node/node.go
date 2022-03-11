@@ -9,18 +9,19 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/pkg/errors"
-	"happystoic/p2pnetwork/pkg/org"
-	"happystoic/p2pnetwork/pkg/reliability"
 
 	"happystoic/p2pnetwork/pkg/config"
 	"happystoic/p2pnetwork/pkg/cryptotools"
+	ldht "happystoic/p2pnetwork/pkg/dht"
+	"happystoic/p2pnetwork/pkg/files"
 	"happystoic/p2pnetwork/pkg/messaging/clients"
 	"happystoic/p2pnetwork/pkg/messaging/protocols"
 	"happystoic/p2pnetwork/pkg/messaging/utils"
+	"happystoic/p2pnetwork/pkg/org"
 	"happystoic/p2pnetwork/pkg/peer-discovery"
+	"happystoic/p2pnetwork/pkg/reliability"
 )
 
 var log = logging.Logger("p2pnetwork")
@@ -30,8 +31,9 @@ type Node struct {
 	*protocols.AlertProtocol // TODO are protocols really important here?
 	*protocols.RecommendationProtocol
 	*protocols.IntelligenceProtocol
+	*protocols.FileShareProtocol
 
-	idht    *dht.IpfsDHT
+	dht     *ldht.Dht
 	relBook *reliability.Book
 	orgBook *org.Book
 	conf    *config.Config
@@ -44,7 +46,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	var idht *dht.IpfsDHT
+	var dht *ldht.Dht
 
 	// Let's prevent our node from having too many
 	// connections by attaching a connection manager.
@@ -82,8 +84,8 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		libp2p.NATPortMap(),
 		// Let this host use the DHT to find other hosts
 		libp2p.Routing(func(h host.Host) (routing.PeerRouting, error) {
-			idht, err = dht.New(ctx, h, dht.Mode(dht.ModeServer))
-			return idht, err
+			dht, err = ldht.New(ctx, h)
+			return dht, err
 		}),
 		// Let this host use relays and advertise itself on relays if
 		// it finds it is behind NAT. Use libp2p.Relay(options...) to
@@ -110,7 +112,9 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	// setup books
 	relBook := reliability.NewBook()
-	orgBook, err := org.NewBook(&conf.Organisations, idht)
+	fileBook := files.NewFileBook()
+
+	orgBook, err := org.NewBook(&conf.Organisations, dht, p2phost.ID())
 	if err != nil {
 		return nil, errors.Errorf("error creating org book: %s", err)
 	}
@@ -118,7 +122,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	n := &Node{
 		Host:    p2phost,
-		idht:    idht,
+		dht:     dht,
 		relBook: relBook,
 		orgBook: orgBook,
 		conf:    conf,
@@ -127,10 +131,11 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	// setup all protocols
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
-	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook)
+	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook, relBook)
 	n.AlertProtocol = protocols.NewAlertProtocol(protoUtils)
 	n.RecommendationProtocol = protocols.NewRecommendationProtocol(ctx, protoUtils, &conf.ProtocolSettings.Recommendation)
 	n.IntelligenceProtocol = protocols.NewIntelligenceProtocol(ctx, protoUtils, &conf.ProtocolSettings.Intelligence)
+	n.FileShareProtocol = protocols.NewFileShareProtocol(ctx, protoUtils, fileBook, dht, &conf.ProtocolSettings.FileShare)
 	_ = protocols.NewReliabilityReceiver(protoUtils, relBook)
 
 	return n, nil
@@ -205,14 +210,14 @@ func (n *Node) ConnectToInitPeers() {
 }
 
 // advertiseMyOrgs tells the network that I am member of my organizations
-func (n *Node) advertiseMyOrgs(ctx context.Context) {
-	for o, _ := range n.orgBook.MySignatures {
+func (n *Node) advertiseMyOrgs(_ context.Context) {
+	for _, o := range n.orgBook.MyOrgs {
 		c, err := o.Cid()
 		if err != nil {
 			log.Errorf("error converting org to cid: %s", err)
 			continue
 		}
-		err = n.idht.Provide(ctx, c, true)
+		err = n.dht.StartProviding(c)
 		if err != nil {
 			log.Errorf("error putting myself as member of org %s to a DHT: %s ", o.String(), err)
 		}

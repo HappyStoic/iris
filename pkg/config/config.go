@@ -2,10 +2,15 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/pkg/errors"
 )
+
+var log = logging.Logger("p2pnetwork")
 
 type Config struct {
 	Identity         IdentityConfig
@@ -21,8 +26,11 @@ type Server struct {
 }
 
 type OrgConfig struct {
-	Trustworthy []string
-	Signatures  []OrgSig
+	Trustworthy  []string
+	MySignatures []OrgSig
+
+	// DhtUpdatePeriod says often to ask DHT about members of trusted orgs
+	DhtUpdatePeriod time.Duration
 }
 
 type OrgSig struct {
@@ -54,6 +62,18 @@ type Redis struct {
 type ProtocolSettings struct {
 	Recommendation RecommendationSettings
 	Intelligence   IntelligenceSettings
+	FileShare      FileShareSettings
+}
+
+type FileShareSettings struct {
+	MetaSpreadSettings map[string]SpreadStrategy
+	DownloadDir        string // default value /tmp TODO test this value working
+}
+
+type SpreadStrategy struct {
+	NumberOfPeers int
+	Every         time.Duration
+	Until         time.Duration
 }
 
 type RecommendationSettings struct {
@@ -89,9 +109,35 @@ func (c *Config) Check() error {
 	if c.ProtocolSettings.Recommendation.Timeout == 0 {
 		return errors.New("ProtocolSettings.Recommendation.Timeout must be set")
 	}
+
+	for sev, settings := range c.ProtocolSettings.FileShare.MetaSpreadSettings {
+		lsev := strings.ToUpper(sev)
+		if lsev != "MINOR" && lsev != "MAJOR" && lsev != "CRITICAL" {
+			return errors.Errorf("unknown severity ProtocolSettings.FileShare.MetaSpreadSettings=%s", lsev)
+		}
+		if settings.NumberOfPeers <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.NumberOfPeers=%d - spreading disabled",
+				lsev, settings.NumberOfPeers)
+			continue
+		}
+		if settings.Until <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.Until=%s - undefined behavior", lsev, settings.Until)
+		}
+		if settings.Every <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.Every=%s - periodical spreading disabled",
+				lsev, settings.Every)
+		}
+	}
+
 	// default values
 	if c.Redis.Port == 0 {
 		c.Redis.Port = 6379 // Use default redis port if port is not specified
+	}
+	if c.ProtocolSettings.FileShare.DownloadDir == "" {
+		c.ProtocolSettings.FileShare.DownloadDir = "/tmp"
 	}
 	return nil
 }

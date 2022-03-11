@@ -2,6 +2,7 @@ package reliability
 
 import (
 	"github.com/libp2p/go-libp2p-core/peer"
+	"math/rand"
 )
 
 type Reliability float64
@@ -24,5 +25,11 @@ func (rb *Book) PeerRel(p peer.ID) Reliability {
 	if val, ok := rb.peersRel[p]; ok {
 		return val
 	}
-	return DefaultReliability
+
+	// TODO: remove
+	r := Reliability(rand.Float64())
+	rb.peersRel[p] = r
+	return r
+
+	//return DefaultReliability
 }

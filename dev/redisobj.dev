@@ -12,3 +12,9 @@ PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_intelligence_request", "version": 1, "data"
 
 # Intelligence RESPONSE
 PUBLISH gp2p_tl2nl2 '{"type": "tl2nl_intelligence_response", "version": 1, "data": {"request_id": "<id>", "payload": "<blackbox for TL>"}}'
+
+# FileShareAnnounce
+PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share", "version": 1, "data": { "expired_at": 1647162651, "severity": "MAJOR", "rights": [], "description": {"size": 420}, "path": "/home/yourmother/.bashrc" }}'
+
+# FileShareDownload
+PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share_download", "version": 1, "data": {"file_id": "" }}'

@@ -71,7 +71,7 @@ func (rp *RecommendationProtocol) onP2PRequest(s network.Stream) {
 	log.Infof("received p2p recommendation request")
 	recomReq := &pb.RecommendationRequest{}
 
-	err := rp.DeserializeMessageFromStream(s, recomReq)
+	err := rp.DeserializeMessageFromStream(s, recomReq, true)
 	if err != nil {
 		log.Errorf("error deserilising p2p recommendation request from stream: %s", err)
 		return
@@ -104,7 +104,7 @@ func (rp *RecommendationProtocol) onP2PResponse(s network.Stream) {
 	log.Infof("received p2p recommendation response")
 	recomResp := &pb.RecommendationResponse{}
 
-	err := rp.DeserializeMessageFromStream(s, recomResp)
+	err := rp.DeserializeMessageFromStream(s, recomResp, true)
 	if err != nil {
 		log.Errorf("error deserilising p2P recommendation response from stream: %s", err)
 		return

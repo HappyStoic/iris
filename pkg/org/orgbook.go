@@ -2,99 +2,146 @@ package org
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/peer"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/pkg/errors"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/pkg/errors"
+
 	"happystoic/p2pnetwork/pkg/config"
+	ldht "happystoic/p2pnetwork/pkg/dht"
+	"happystoic/p2pnetwork/pkg/messaging/pb"
 )
 
-var log = logging.Logger("p2pnetwork")
-
-type Org peer.ID
-
-func (o *Org) String() string {
-	return peer.ID(*o).String()
-}
-
-func (o *Org) Cid() (cid.Cid, error) {
-	return cid.Decode(o.String())
-}
-
 type Book struct {
-	trustworthy  []*Org
-	signedPeers  map[*peer.ID][]*Org
-	MySignatures map[*Org]string
-	idht         *dht.IpfsDHT
+	updateEvery time.Duration
+	dht         *ldht.Dht
+
+	// trustworthy defines the organizations that this peer trusts
+	trustworthy []*Org
+
+	// MySignaturesProto is a list with org IDs and signatures of this peer
+	MySignaturesProto []*pb.Organisation
+
+	// MyOrgs is a list with orgs that this peer is a member of
+	MyOrgs []*Org
+
+	// ClaimedMembers stores potential members of organisations. This
+	// information is periodically updated from a DHT and might be true or not.
+	// To see verified peers, see variable VerifiedSignatures
+	ClaimedMembers map[Org][]*peer.ID
+
+	// VerifiedSignatures stores peers' orgs with successfully verified
+	// signatures
+	VerifiedSignatures map[peer.ID][]*Org
 }
 
-func NewBook(cfg *config.OrgConfig, idht *dht.IpfsDHT) (*Book, error) {
-	tr := make([]*Org, 0, len(cfg.Trustworthy))
+func NewBook(cfg *config.OrgConfig, dht *ldht.Dht, me peer.ID) (*Book, error) {
+	trusted := make([]*Org, 0, len(cfg.Trustworthy))
 	for _, rawTr := range cfg.Trustworthy {
 		o, err := Decode(rawTr)
 		if err != nil {
 			return nil, err
 		}
-		tr = append(tr, o)
+		trusted = append(trusted, o)
 	}
 
-	mySigs := make(map[*Org]string)
-	for _, sig := range cfg.Signatures {
+	myProtoSigs := make([]*pb.Organisation, 0, len(cfg.MySignatures))
+	myOrgs := make([]*Org, 0, len(cfg.MySignatures))
+	for _, sig := range cfg.MySignatures {
 		o, err := Decode(sig.ID)
 		if err != nil {
 			return nil, err
 		}
-		mySigs[o] = sig.Signature
+
+		// let's also verify the signature. Other peers could lower our
+		// reliability if we introduce ourselves with incorrect signatures
+		ok, err := o.VerifyPeer(me, sig.Signature)
+		if err != nil {
+			return nil, errors.Errorf("error validating sigature %s: %s", sig.Signature, err)
+		}
+		if !ok {
+			return nil, errors.Errorf("invalid signature '%s' of org '%s'", sig.Signature, sig.ID)
+		}
+
+		myProtoSigs = append(myProtoSigs, &pb.Organisation{
+			OrgId:     sig.ID,
+			Signature: sig.Signature,
+		})
+		myOrgs = append(myOrgs, o)
 	}
-	return &Book{
-		trustworthy:  tr,
-		signedPeers:  make(map[*peer.ID][]*Org, 0),
-		MySignatures: mySigs,
-		idht:         idht,
-	}, nil
+	b := &Book{
+		updateEvery:        cfg.DhtUpdatePeriod,
+		dht:                dht,
+		trustworthy:        trusted,
+		MySignaturesProto:  myProtoSigs,
+		MyOrgs:             myOrgs,
+		ClaimedMembers:     make(map[Org][]*peer.ID),
+		VerifiedSignatures: make(map[peer.ID][]*Org),
+	}
+
+	// default value of update period
+	if b.updateEvery == 0 {
+		b.updateEvery = time.Minute * 5
+	}
+
+	return b, nil
+}
+
+func (b *Book) update() {
+	// make completely new book which will replace the old one
+	newClaim := make(map[Org][]*peer.ID)
+
+	for _, tr := range b.trustworthy {
+		peers := make([]*peer.ID, 0)
+
+		// convert trusted org to cid and get providers from DHT
+		c, err := tr.Cid()
+		if err != nil {
+			log.Errorf("error converting org to cid: %s", err)
+			continue
+		}
+		res, err := b.dht.GetProvidersOf(c)
+		if err != nil {
+			log.Errorf("error getting providers of %s: %s", c.String(), err)
+			continue
+		}
+
+		for _, adr := range res {
+			if adr.ID == b.dht.PeerID() {
+				// this is local me (local peer), do not process it
+				continue
+			}
+			peers = append(peers, &adr.ID)
+			log.Debugf("DHT claims peer %s is member of %s org", adr.ID.String(), tr.String())
+		}
+
+		newClaim[*tr] = peers
+	}
+	b.ClaimedMembers = newClaim
 }
 
 func (b *Book) RunUpdater(ctx context.Context) {
-	updateBookTicker := time.NewTicker(time.Minute * 5) // TODO configurable durations
+	if len(b.trustworthy) == 0 {
+		log.Debugf("Not starting org updater - no trusted orgs")
+		return
+	}
+
 	go func() {
+		// sleep to until a peer connects to the network
+		log.Debugf("running org book updater for the 1st time")
+		time.Sleep(time.Second * 5)
+		b.update()
+
+		ticker := time.NewTicker(b.updateEvery)
 		for {
 			select {
 			case <-ctx.Done():
-				updateBookTicker.Stop()
-				log.Infof("stoping organisation updater of reason %s", ctx.Err())
+				ticker.Stop()
+				log.Infof("stoping org updater: %s", ctx.Err())
 				return
-			case <-updateBookTicker.C:
-				log.Debugf("started Organsation book update")
-
-				// make completely new book which will replace the old one
-				newRecord := make(map[*peer.ID][]*Org, 0)
-
-				for _, tr := range b.trustworthy {
-					c, err := tr.Cid()
-					if err != nil {
-						log.Errorf("error converting Org to cid.cid: %s", err)
-						continue
-					}
-					res, err := b.idht.FindProviders(ctx, c)
-					if err != nil {
-						log.Errorf("error finding providers of %s: %s", c.String(), err)
-						continue
-					}
-
-					// TODO verify the signature that they are not bullshitting us
-
-					for _, adr := range res {
-						if _, ok := newRecord[&adr.ID]; !ok {
-							newRecord[&adr.ID] = make([]*Org, 0)
-						}
-						newRecord[&adr.ID] = append(newRecord[&adr.ID], tr)
-						log.Debugf("found that peer %s is trusted by %s org", adr.ID.String(), tr.String())
-					}
-				}
-				b.signedPeers = newRecord
+			case <-ticker.C:
+				log.Debugf("starting org book update from DHT")
+				b.update()
 				log.Debugf("ended Organisation book update")
 			}
 		}
@@ -102,14 +149,22 @@ func (b *Book) RunUpdater(ctx context.Context) {
 	return
 }
 
-func (b *Book) AddPeerOrg(p *peer.ID, o *Org) {
-	if _, ok := b.signedPeers[p]; !ok {
-		b.signedPeers[p] = make([]*Org, 0)
+// HasPeerRight returns true if peer p has verified signature from at least one
+// organisation in orgs argument
+func (b *Book) HasPeerRight(p peer.ID, orgs []*Org) bool {
+	// TODO: optimize with some data structure? this has square complexity
+	peerOrgs := b.VerifiedSignatures[p]
+	for _, po := range peerOrgs {
+		for _, o := range orgs {
+			if *po == *o {
+				return true
+			}
+		}
 	}
-	b.signedPeers[p] = append(b.signedPeers[p], o)
+	return false
 }
 
-func (b *Book) isTrustworthy(o *Org) bool {
+func (b *Book) IsTrustworthy(o *Org) bool {
 	for _, trusted := range b.trustworthy {
 		if *trusted == *o {
 			return true
@@ -118,29 +173,11 @@ func (b *Book) isTrustworthy(o *Org) bool {
 	return false
 }
 
-func (b *Book) StringOrgsOfPeer(p *peer.ID) []string {
-	orgs := make([]string, 0, len(b.signedPeers[p]))
-	for _, o := range b.signedPeers[p] {
+// StringOrgsOfPeer returns peer's organisations that we have verified
+func (b *Book) StringOrgsOfPeer(p peer.ID) []string {
+	orgs := make([]string, 0, len(b.VerifiedSignatures[p]))
+	for _, o := range b.VerifiedSignatures[p] {
 		orgs = append(orgs, o.String())
 	}
 	return orgs
 }
-
-func Decode(s string) (*Org, error) {
-	o, err := peer.Decode(s)
-	if err != nil {
-		return nil, errors.Errorf("error creating redis client: %s", err)
-	}
-	x := Org(o)
-	return &x, nil
-}
-
-// TODO remove or convert to docs
-// I trust some organisations, thus I need:
-// * PubKey -> used as ID of the org and also as key to verify the signatures
-
-// I am trusted by some orgs, thus I need:
-// * PubKey    -> used as ID of the org
-// * Signature -> used as a proof that I am trusted by this org
-
-// Org book stores peer ID mapped to org ID (PubKey)

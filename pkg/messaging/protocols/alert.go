@@ -2,7 +2,6 @@ package protocols
 
 import (
 	"encoding/json"
-
 	"github.com/golang/protobuf/proto"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -112,7 +111,7 @@ func (ap *AlertProtocol) onP2PAlertMessage(s network.Stream) {
 	log.Infof("received p2p alert message")
 	alert := &pb.Alert{}
 
-	err := ap.DeserializeMessageFromStream(s, alert)
+	err := ap.DeserializeMessageFromStream(s, alert, true)
 	if err != nil {
 		log.Errorf("error deserilising alert proto message from stream: %s", err)
 		return

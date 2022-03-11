@@ -1,14 +1,14 @@
 Identity:
   GenerateNewKey: true
-#  LoadKeyFromFile: file.key
+#  LoadKeyFromFile: /home/yourmother/moje/projects/p2pnetwork/dev/peer1/key.priv
 #  SaveKeyToFile: file.key
 
 Server:
-  port: 9001
+  port: 9006
 
 Redis:
   Host: 127.0.0.1
-  Tl2NlChannel: gp2p_tl2nl1
+  Tl2NlChannel: gp2p_tl2nl6
 
 ProtocolSettings:
   Recommendation:
@@ -21,5 +21,5 @@ ProtocolSettings:
 
 PeerDiscovery:
   ListOfMultiAddresses:
-   - "/ip4/10.0.0.40/udp/9000/quic 12D3KooWSndoeEM8duZwTbJU1FCZSw3tMqKjFMCR9BfTweVSNPCx"
+   - '/ip4/127.0.0.1/udp/9001/quic 12D3KooWLDCxxP6PAKG6NUYWs16VbSZhQNHY361otSmauvVnXV4g'
 #   - "/ip4/127.0.0.1/udp/9002/quic 12D3KooWFTf9mXfR5yN1oPv7wPNGMq7DfgPPmep9hREy5syuZ6ug"
