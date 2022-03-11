@@ -61,13 +61,29 @@ func loadConfig() (*config.Config, error) {
 	return &c, c.Check()
 }
 
-func checkUDPPortAvailability(port uint32) error {
+func checkUDPPortAvailability(port uint32) (uint32, error) {
 	ln, err := net.ListenUDP("udp", &net.UDPAddr{Port: int(port)})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	_ = ln.Close()
-	return nil
+	return port, nil
+}
+
+func checkPort(port uint32) (uint32, error) {
+	// check provided port
+	if port != 0 {
+		return checkUDPPortAvailability(port)
+	}
+	// try to find some free port
+	for port = 9000; port < 11000; port++ {
+		_, err := checkUDPPortAvailability(port)
+		if err == nil {
+			// found free port
+			return port, err
+		}
+	}
+	return 0, errors.Errorf("no available port found")
 }
 
 func main() {
@@ -79,11 +95,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// check if port is available
-	err = checkUDPPortAvailability(conf.Server.Port)
+	// check if port is available or generate new available port
+	p, err := checkPort(conf.Server.Port)
 	if err != nil {
 		log.Fatal(err)
 	}
+	conf.Server.Port = p
 
 	// create p2p node
 	ctx, cancel := context.WithCancel(context.Background())

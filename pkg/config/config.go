@@ -22,6 +22,8 @@ type Config struct {
 }
 
 type Server struct {
+	// UDP Port to listen on. Missing or zero value indicates random port
+	// between <9000,11000>
 	Port uint32
 }
 
