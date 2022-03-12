@@ -180,9 +180,9 @@ func (fs *FileShareProtocol) tryFileProvider(msg proto.Message, p peer.ID, fileC
 	// check if the hash (cid) actually matches
 	receivedCid, err := files.GetBytesCid(resp.Data)
 	if !receivedCid.Equals(fileCid) {
-		err := fs.ReportPeer(p, "provided file with not matching hash")
+		err = fs.ReportPeer(p, "provided file with not matching hash")
 		if err != nil {
-			log.Errorf("error reporting to TL peer %s: %s", p.String(), err)
+			log.Errorf("error reporting peer: %s", err)
 		}
 		return "", errors.Errorf("peer %s provided not matching file!", p.String())
 	}
@@ -415,7 +415,7 @@ func (fs *FileShareProtocol) onRedisFileAnnouncement(data []byte) {
 
 	//TODO add support for pulling as well
 	fs.spreader.startSpreading(p2pFileShareMetadataProtocol, meta.Severity, meta.Rights, protoMsg, fs.Host.ID())
-	log.Infof("handler onRedisFileAnnouncement finished")
+	log.Debugf("handling file share annoucment from TL ended")
 }
 
 func (fs *FileShareProtocol) createP2PMeta(fCid cid.Cid, meta Tl2NlRedisFileShareAnnounce) (*pb.FileMetadata, error) {
@@ -453,7 +453,7 @@ func (fs *FileShareProtocol) fileMetaFromP2P(p2pMeta *pb.FileMetadata) (*files.F
 		return nil, err
 	}
 
-	rights := make([]*org.Org, len(p2pMeta.Rights))
+	rights := make([]*org.Org, 0, len(p2pMeta.Rights))
 	for _, strOrg := range p2pMeta.Rights {
 		o, err := org.Decode(strOrg)
 		if err != nil {
@@ -493,7 +493,7 @@ func (fs *FileShareProtocol) fileMetaFromRedis(ann *Tl2NlRedisFileShareAnnounce)
 		return nil, nil, err
 	}
 
-	rights := make([]*org.Org, len(ann.Rights))
+	rights := make([]*org.Org, 0, len(ann.Rights))
 	for _, strOrg := range ann.Rights {
 		o, err := org.Decode(strOrg)
 		if err != nil {

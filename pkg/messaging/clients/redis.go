@@ -82,19 +82,17 @@ func (rc *RedisClient) subscribeChannel(channel string) {
 			}
 
 			callback, exists := rc.messageTypesCallbacks[baseMsg.Type]
-			if exists {
-				log.Debugf("received RedisBaseMessage of type %s, calling its callback...", baseMsg.Type)
-
-				// todo make nicer if time
-				bytesData, _ := json.Marshal(baseMsg.Data)
-				go func() {
-					wg.Add(1)
-					callback(bytesData)
-					wg.Done()
-				}()
-			} else {
+			if !exists {
 				log.Errorf("received unknown RedisBaseMessage type '%s' from TL", baseMsg.Type)
+				continue
 			}
+
+			bytesData, _ := json.Marshal(baseMsg.Data)
+			go func() {
+				wg.Add(1)
+				callback(bytesData)
+				wg.Done()
+			}()
 		}
 		wg.Wait()
 	}()

@@ -18,3 +18,6 @@ PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share", "version": 1, "data": { "expir
 
 # FileShareDownload
 PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share_download", "version": 1, "data": {"file_id": "" }}'
+
+# Send Reliability Update from TL to NL
+PUBLISH gp2p_tl2nl6 '{"type": "tl2nl_peers_reliability", "version": 1, "data": [{"peer_id": "id", "reliability": 0.6}]}'

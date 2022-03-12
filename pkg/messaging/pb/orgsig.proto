@@ -1,0 +1,16 @@
+syntax = "proto3";
+package pb;
+option go_package = "./pkg/messaging/pb";
+
+import  "base.proto";
+
+message OrgSig {
+  MetaData metadata = 1;
+
+  repeated Organisation organisations = 2; // signatures of organisations belonging to sender
+}
+
+message Organisation {
+  string orgId = 1;
+  string signature = 2;
+}

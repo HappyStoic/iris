@@ -50,8 +50,12 @@ func (pu *ProtoUtils) ConnectedPeers() []peer.ID {
 	return pu.Host.Network().Peers()
 }
 
+func (pu *ProtoUtils) OpenStream(id peer.ID, protocol protocol.ID) (network.Stream, error) {
+	return pu.Host.NewStream(context.Background(), id, protocol)
+}
+
 func (pu *ProtoUtils) SendProtoMessage(id peer.ID, protocol protocol.ID, data proto.Message) error {
-	s, err := pu.Host.NewStream(context.Background(), id, protocol)
+	s, err := pu.OpenStream(id, protocol)
 	if err != nil {
 		return err
 	}
@@ -76,7 +80,7 @@ func (pu *ProtoUtils) WriteProtoMsg(data proto.Message, s network.Stream) error 
 
 func (pu *ProtoUtils) InitiateStream(id peer.ID, protocol protocol.ID, data proto.Message) (network.Stream, error) {
 	var s network.Stream
-	s, err := pu.Host.NewStream(context.Background(), id, protocol)
+	s, err := pu.OpenStream(id, protocol)
 	if err != nil {
 		return s, err
 	}
@@ -105,9 +109,8 @@ func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	}
 
 	sender := &pb.PeerIdentity{
-		NodeId:        pu.Host.ID().String(),
-		NodePubKey:    nodePubKey,
-		Organisations: pu.OrgBook.MySignaturesProto,
+		NodeId:     pu.Host.ID().String(),
+		NodePubKey: nodePubKey,
 	}
 	metadata := &pb.MetaData{
 		OriginalSender: sender,
@@ -146,6 +149,7 @@ func (pu *ProtoUtils) DeserializeMessageFromStream(s network.Stream, msg proto.M
 
 // ReportPeer sends a report to TL via Redis
 func (pu *ProtoUtils) ReportPeer(p peer.ID, reason string) error {
+	log.Debugf("reporting to TL peer '%s' with reason '%s'", p, reason)
 	type RedisPeerReport struct {
 		Peer   PeerMetadata `json:"peer"`
 		Reason string       `json:"reason"`

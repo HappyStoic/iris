@@ -4,8 +4,6 @@ import (
 	"context"
 	"flag"
 	"math/rand"
-	"net"
-	"os"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -35,9 +33,10 @@ var log = logging.Logger("p2pnetwork")
 // TODO: wait in storageResponse only for responses from peers where requests were sucessfully sent (err was nil)
 // TODO: maybe I should send all messages in new goroutine so it does not black? (especially p2p newStream functions?)
 // TODO: create tool to generate orgs priv/pub key and tool sign peers
-// TODO: reporting redis-cli channel
+// TODO: use more reporting of peers to TL
 // TODO: verify other peers' organisations signatures
 // TODO: maybe delete file meta after expired elapsed? right now ElapsedAt is not used
+// TODO: is basic manager really trimming peers based on their reliability?
 
 func loadConfig() (*config.Config, error) {
 	var c config.Config
@@ -61,65 +60,30 @@ func loadConfig() (*config.Config, error) {
 	return &c, c.Check()
 }
 
-func checkUDPPortAvailability(port uint32) (uint32, error) {
-	ln, err := net.ListenUDP("udp", &net.UDPAddr{Port: int(port)})
-	if err != nil {
-		return 0, err
-	}
-	_ = ln.Close()
-	return port, nil
-}
-
-func checkPort(port uint32) (uint32, error) {
-	// check provided port
-	if port != 0 {
-		return checkUDPPortAvailability(port)
-	}
-	// try to find some free port
-	for port = 9000; port < 11000; port++ {
-		_, err := checkUDPPortAvailability(port)
-		if err == nil {
-			// found free port
-			return port, err
-		}
-	}
-	return 0, errors.Errorf("no available port found")
-}
-
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	// load configuration
-	conf, err := loadConfig()
+	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// check if port is available or generate new available port
-	p, err := checkPort(conf.Server.Port)
-	if err != nil {
-		log.Fatal(err)
-	}
-	conf.Server.Port = p
-
-	// create p2p node
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	localNode, err := node.NewNode(conf, ctx)
+
+	// create p2p node
+	localNode, err := node.NewNode(cfg, ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// print connection strings
 	log.Infof("created node with ID: %s", localNode.ID())
 	for _, addr := range localNode.Addrs() {
 		log.Infof("connection string: '%s %s'", addr, localNode.ID())
 	}
 
-	// connect node to the network
-	localNode.ConnectToInitPeers()
-
-	// temporary playground
-	doSomething := len(os.Getenv("DO_SOMETHING")) > 0
-	localNode.Start(ctx, doSomething)
-
+	localNode.Start(ctx)
 	log.Infof("finished, program terminating...")
 }

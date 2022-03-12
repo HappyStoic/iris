@@ -16,8 +16,8 @@ type Book struct {
 	updateEvery time.Duration
 	dht         *ldht.Dht
 
-	// trustworthy defines the organizations that this peer trusts
-	trustworthy []*Org
+	// Trustworthy defines the organizations that this peer trusts
+	Trustworthy []*Org
 
 	// MySignaturesProto is a list with org IDs and signatures of this peer
 	MySignaturesProto []*pb.Organisation
@@ -72,7 +72,7 @@ func NewBook(cfg *config.OrgConfig, dht *ldht.Dht, me peer.ID) (*Book, error) {
 	b := &Book{
 		updateEvery:        cfg.DhtUpdatePeriod,
 		dht:                dht,
-		trustworthy:        trusted,
+		Trustworthy:        trusted,
 		MySignaturesProto:  myProtoSigs,
 		MyOrgs:             myOrgs,
 		ClaimedMembers:     make(map[Org][]*peer.ID),
@@ -91,7 +91,7 @@ func (b *Book) update() {
 	// make completely new book which will replace the old one
 	newClaim := make(map[Org][]*peer.ID)
 
-	for _, tr := range b.trustworthy {
+	for _, tr := range b.Trustworthy {
 		peers := make([]*peer.ID, 0)
 
 		// convert trusted org to cid and get providers from DHT
@@ -121,7 +121,7 @@ func (b *Book) update() {
 }
 
 func (b *Book) RunUpdater(ctx context.Context) {
-	if len(b.trustworthy) == 0 {
+	if len(b.Trustworthy) == 0 {
 		log.Debugf("Not starting org updater - no trusted orgs")
 		return
 	}
@@ -152,7 +152,7 @@ func (b *Book) RunUpdater(ctx context.Context) {
 // HasPeerRight returns true if peer p has verified signature from at least one
 // organisation in orgs argument
 func (b *Book) HasPeerRight(p peer.ID, orgs []*Org) bool {
-	// TODO: optimize with some data structure? this has square complexity
+	// OPTIM: some data structure? this has square complexity
 	peerOrgs := b.VerifiedSignatures[p]
 	for _, po := range peerOrgs {
 		for _, o := range orgs {
@@ -165,7 +165,7 @@ func (b *Book) HasPeerRight(p peer.ID, orgs []*Org) bool {
 }
 
 func (b *Book) IsTrustworthy(o *Org) bool {
-	for _, trusted := range b.trustworthy {
+	for _, trusted := range b.Trustworthy {
 		if *trusted == *o {
 			return true
 		}
@@ -180,4 +180,12 @@ func (b *Book) StringOrgsOfPeer(p peer.ID) []string {
 		orgs = append(orgs, o.String())
 	}
 	return orgs
+}
+
+func (b *Book) AddVerifiedSig(p peer.ID, o *Org) {
+	if _, exists := b.VerifiedSignatures[p]; !exists {
+		b.VerifiedSignatures[p] = make([]*Org, 0)
+	}
+
+	b.VerifiedSignatures[p] = append(b.VerifiedSignatures[p], o)
 }

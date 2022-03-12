@@ -6,8 +6,9 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/pkg/errors"
+
+	"happystoic/p2pnetwork/pkg/utils"
 )
 
 var log = logging.Logger("p2pnetwork")
@@ -19,12 +20,57 @@ type Config struct {
 	Redis            Redis
 	ProtocolSettings ProtocolSettings
 	Organisations    OrgConfig
+	Connections      Connections
 }
 
 type Server struct {
 	// UDP Port to listen on. Missing or zero value indicates random port
 	// between <9000,11000>
 	Port uint32
+}
+
+func (s *Server) validate() error {
+	if s.Port != 0 {
+		return utils.CheckUDPPortAvailability(s.Port)
+	}
+	return nil
+}
+
+func (s *Server) setDefaults() error {
+	if s.Port != 0 {
+		var p uint32
+		for p = 9000; p < 11000; p++ {
+			err := utils.CheckUDPPortAvailability(p)
+			if err == nil {
+				// found free port
+				s.Port = p
+				return nil
+			}
+		}
+	}
+	return errors.Errorf("no available port found")
+}
+
+type Connections struct {
+	// lower bound for number of connections
+	Low int
+	// number of connections this peer will proactively seek. Others will be
+	// saved for incoming connections
+	Medium int
+	// upper bound for number of connections
+	High int
+}
+
+func (c *Connections) setDefaults() {
+	if c.Low == 0 {
+		c.Low = 15
+	}
+	if c.Medium == 0 {
+		c.Medium = 30
+	}
+	if c.High == 0 {
+		c.High = 50
+	}
 }
 
 type OrgConfig struct {
@@ -52,6 +98,17 @@ type IdentityConfig struct {
 	SaveKeyToFile   string
 }
 
+func (ic *IdentityConfig) validate() error {
+	fmt.Println(ic)
+	if ic.GenerateNewKey && ic.LoadKeyFromFile != "" {
+		return errors.New("cannot generate new key and load one from file at the same time")
+	}
+	if !ic.GenerateNewKey && ic.LoadKeyFromFile == "" {
+		return errors.New("specify either to generate a new key or load one from a file")
+	}
+	return nil
+}
+
 type Redis struct {
 	Host         string
 	Port         uint
@@ -61,15 +118,65 @@ type Redis struct {
 	Tl2NlChannel string
 }
 
+func (r *Redis) validate() error {
+	if r.Host == "" {
+		return errors.New("redis host must be specified")
+	}
+	if r.Tl2NlChannel == "" {
+		return errors.New("tl2nl redis channel must be specified")
+	}
+	return nil
+}
+
+func (r *Redis) setDefaults() {
+	if r.Port == 0 {
+		r.Port = 6379
+	}
+}
+
 type ProtocolSettings struct {
 	Recommendation RecommendationSettings
 	Intelligence   IntelligenceSettings
 	FileShare      FileShareSettings
 }
 
+func (ps *ProtocolSettings) validate() error {
+	if ps.Recommendation.Timeout == 0 {
+		return errors.New("ProtocolSettings.Recommendation.Timeout must be set")
+	}
+	for sev, settings := range ps.FileShare.MetaSpreadSettings {
+		uSev := strings.ToUpper(sev)
+		if uSev != "MINOR" && uSev != "MAJOR" && uSev != "CRITICAL" {
+			return errors.Errorf("unknown severity ProtocolSettings.FileShare.MetaSpreadSettings=%s", uSev)
+		}
+		if settings.NumberOfPeers <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.NumberOfPeers=%d - spreading disabled",
+				uSev, settings.NumberOfPeers)
+			continue
+		}
+		if settings.Until <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.Until=%s - undefined behavior", uSev, settings.Until)
+		}
+		if settings.Every <= 0 {
+			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
+				"Settings.%s.Every=%s - periodical spreading disabled",
+				uSev, settings.Every)
+		}
+	}
+	return nil
+}
+
+func (ps *ProtocolSettings) setDefaults() {
+	if ps.FileShare.DownloadDir == "" {
+		ps.FileShare.DownloadDir = "/tmp"
+	}
+}
+
 type FileShareSettings struct {
 	MetaSpreadSettings map[string]SpreadStrategy
-	DownloadDir        string // default value /tmp TODO test this value working
+	DownloadDir        string
 }
 
 type SpreadStrategy struct {
@@ -96,50 +203,25 @@ func (r *Redis) Addr() string {
 
 func (c *Config) Check() error {
 	// validity check
-	if c.Identity.GenerateNewKey && c.Identity.LoadKeyFromFile != "" {
-		return errors.New("cannot generate new key and load one from file at the same time")
+	if err := c.Identity.validate(); err != nil {
+		return err
 	}
-	if !c.Identity.GenerateNewKey && c.Identity.LoadKeyFromFile == "" {
-		return errors.New("specify either to generate a new key or load one from a file")
+	if err := c.Redis.validate(); err != nil {
+		return err
 	}
-	if c.Redis.Host == "" {
-		return errors.New("redis host must be specified")
+	if err := c.ProtocolSettings.validate(); err != nil {
+		return err
 	}
-	if c.Redis.Tl2NlChannel == "" {
-		return errors.New("tl2nl redis channel must be specified")
-	}
-	if c.ProtocolSettings.Recommendation.Timeout == 0 {
-		return errors.New("ProtocolSettings.Recommendation.Timeout must be set")
-	}
-
-	for sev, settings := range c.ProtocolSettings.FileShare.MetaSpreadSettings {
-		lsev := strings.ToUpper(sev)
-		if lsev != "MINOR" && lsev != "MAJOR" && lsev != "CRITICAL" {
-			return errors.Errorf("unknown severity ProtocolSettings.FileShare.MetaSpreadSettings=%s", lsev)
-		}
-		if settings.NumberOfPeers <= 0 {
-			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
-				"Settings.%s.NumberOfPeers=%d - spreading disabled",
-				lsev, settings.NumberOfPeers)
-			continue
-		}
-		if settings.Until <= 0 {
-			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
-				"Settings.%s.Until=%s - undefined behavior", lsev, settings.Until)
-		}
-		if settings.Every <= 0 {
-			log.Warnf("Config: ProtocolSettings.FileShare.MetaSpread"+
-				"Settings.%s.Every=%s - periodical spreading disabled",
-				lsev, settings.Every)
-		}
+	if err := c.Server.validate(); err != nil {
+		return err
 	}
 
 	// default values
-	if c.Redis.Port == 0 {
-		c.Redis.Port = 6379 // Use default redis port if port is not specified
-	}
-	if c.ProtocolSettings.FileShare.DownloadDir == "" {
-		c.ProtocolSettings.FileShare.DownloadDir = "/tmp"
+	c.Redis.setDefaults()
+	c.ProtocolSettings.setDefaults()
+	c.Connections.setDefaults()
+	if err := c.Server.setDefaults(); err != nil {
+		return err
 	}
 	return nil
 }

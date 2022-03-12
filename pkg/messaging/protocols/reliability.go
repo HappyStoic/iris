@@ -21,7 +21,6 @@ type RedisRelUpdate struct {
 	Reliability reliability.Reliability `json:"reliability"`
 }
 
-// TODO test this
 func NewReliabilityReceiver(pu *utils.ProtoUtils, rb *reliability.Book) *ReliabilityReceiver {
 	rc := &ReliabilityReceiver{pu, rb}
 
@@ -45,8 +44,8 @@ func (rc *ReliabilityReceiver) onRedisReliabilityUpdate(data []byte) {
 			continue
 		}
 		rc.relBook.UpdatePeerRel(decodedPeer, item.Reliability)
-		log.Debugf("updated reliability of peer: %s", item.PeerId)
+		log.Debugf("updated reliability of peer: '%s' to %f", item.PeerId, item.Reliability)
 		updateCount++
 	}
-	log.Infof("successfuly update reliability of %d peers", updateCount)
+	log.Infof("successfuly updated reliability of %d peers", updateCount)
 }

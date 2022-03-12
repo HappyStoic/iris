@@ -3,9 +3,10 @@ package node
 import (
 	"context"
 	"fmt"
+	"os"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -13,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 
 	"happystoic/p2pnetwork/pkg/config"
+	connmgr "happystoic/p2pnetwork/pkg/connections"
 	"happystoic/p2pnetwork/pkg/cryptotools"
 	ldht "happystoic/p2pnetwork/pkg/dht"
 	"happystoic/p2pnetwork/pkg/files"
@@ -32,6 +34,7 @@ type Node struct {
 	*protocols.RecommendationProtocol
 	*protocols.IntelligenceProtocol
 	*protocols.FileShareProtocol
+	*protocols.OrgSigProtocol
 
 	dht     *ldht.Dht
 	relBook *reliability.Book
@@ -48,17 +51,12 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	var dht *ldht.Dht
 
-	// Let's prevent our node from having too many
-	// connections by attaching a connection manager.
-	cm, err := connmgr.NewConnManager( // TODO create my own Connection manager
-		100, // Lowwater
-		400, // HighWater
-	)
+	cm, err := connmgr.NewManager(&conf.Connections)
 	if err != nil {
 		return nil, err
 	}
 
-	metricsTest := metrics.NewBandwidthCounter() // TODO utilize metrics somehow
+	metricsTest := metrics.NewBandwidthCounter() // TODO use metrics somehow?
 	//go func() {
 	//	for {
 	//		time.Sleep(10 * time.Second)
@@ -113,7 +111,6 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 	// setup books
 	relBook := reliability.NewBook()
 	fileBook := files.NewFileBook()
-
 	orgBook, err := org.NewBook(&conf.Organisations, dht, p2phost.ID())
 	if err != nil {
 		return nil, errors.Errorf("error creating org book: %s", err)
@@ -129,19 +126,29 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		ctx:     ctx,
 	}
 
-	// setup all protocols
+	// setup kits
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
 	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook, relBook)
+
+	// setup all protocols
+	n.OrgSigProtocol = protocols.NewOrgSigProtocol(protoUtils)
 	n.AlertProtocol = protocols.NewAlertProtocol(protoUtils)
 	n.RecommendationProtocol = protocols.NewRecommendationProtocol(ctx, protoUtils, &conf.ProtocolSettings.Recommendation)
 	n.IntelligenceProtocol = protocols.NewIntelligenceProtocol(ctx, protoUtils, &conf.ProtocolSettings.Intelligence)
 	n.FileShareProtocol = protocols.NewFileShareProtocol(ctx, protoUtils, fileBook, dht, &conf.ProtocolSettings.FileShare)
 	_ = protocols.NewReliabilityReceiver(protoUtils, relBook)
 
+	// inject missing dependencies
+	cm.SetProtoUtils(protoUtils)
+	cm.SetOrgSigProtocol(n.OrgSigProtocol)
+
+	// setup callbacks TODO test this
+	relBook.SubscribeForChange(cm.SetReliabilityTagCallback())
+
 	return n, nil
 }
 
-func (n *Node) ConnectToInitPeers() {
+func (n *Node) connectToInitPeers() {
 	// TODO use this as example how to find init peers of my orgs
 	//go func() {
 	//	for {
@@ -188,25 +195,7 @@ func (n *Node) ConnectToInitPeers() {
 			log.Errorf("error connecting to peer %s: %s\n", addr.ID, err)
 			continue
 		}
-		log.Infof("successfuly connected to peer: %s", addr.ID)
 	}
-
-	// TODO remove this
-	//go func() {
-	//time.Sleep(time.Second * 5)
-	//id, _ := peer.Decode("12D3KooWEn4k97RoqSjn5kqPVU8e9zrAS3rMN1NNaTbtu9o83EhT")
-	//ai := peer.AddrInfo{
-	//	ID:    id,
-	//	Addrs: nil,
-	//}
-	//err = n.Connect(n.ctx, ai)
-	//if err != nil {
-	//	log.Errorf("error connecting to peer %s: %s\n", ai.ID, err)
-	//} else {
-	//	log.Infof("successfuly connected to peer: %s", ai.ID)
-	//}
-	//}()
-	//
 }
 
 // advertiseMyOrgs tells the network that I am member of my organizations
@@ -224,12 +213,19 @@ func (n *Node) advertiseMyOrgs(_ context.Context) {
 	}
 }
 
-func (n *Node) Start(ctx context.Context, doSomething bool) {
+func (n *Node) Start(ctx context.Context) {
+	// connect node to the network
+	n.connectToInitPeers()
+
+	// tell the network which organisations I am member of
 	n.advertiseMyOrgs(ctx)
 
-	if doSomething {
+	// tmp
+	if len(os.Getenv("DO_SOMETHING")) > 0 {
 		log.Info("Doing something (not really)")
 		//n.InitiateP2PAlert([]byte("prdel!!! zachovejte paniku, cusasaan Milan"))
 	}
+
+	// block running
 	<-make(chan struct{})
 }

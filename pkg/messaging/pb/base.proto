@@ -14,10 +14,4 @@ message MetaData {
 message PeerIdentity {
   string nodeId = 1;                       // id of original node
   bytes  nodePubKey = 2;                   // Authoring node Secp256k1 public key (32bytes) - protobufs serialized
-  repeated Organisation organisations = 3; // signatures of organisations belonging to sender
-}
-
-message Organisation {
-  string orgId = 1;
-  string signature = 2;
 }
