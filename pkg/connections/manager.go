@@ -6,9 +6,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"happystoic/p2pnetwork/pkg/messaging/protocols"
+	"time"
 
 	"happystoic/p2pnetwork/pkg/config"
+	"happystoic/p2pnetwork/pkg/messaging/protocols"
 	"happystoic/p2pnetwork/pkg/messaging/utils"
 	"happystoic/p2pnetwork/pkg/reliability"
 )
@@ -47,14 +48,20 @@ type Manager struct {
 	*libp2pConnMngr.BasicConnMgr
 	*utils.ProtoUtils
 
+	connecter *Connecter
+
 	orgSigProtocol *protocols.OrgSigProtocol
 	cfg            *config.Connections
+
+	ready bool
 }
 
 func NewManager(cfg *config.Connections) (*Manager, error) {
 	cm, err := libp2pConnMngr.NewConnManager(
 		cfg.Low,  // Lowwater
 		cfg.High, // HighWater
+		libp2pConnMngr.WithGracePeriod(time.Second*5),    // TODO remove
+		libp2pConnMngr.WithSilencePeriod(time.Second*40), // TODO remove
 	)
 	if err != nil {
 		return nil, err
@@ -62,16 +69,16 @@ func NewManager(cfg *config.Connections) (*Manager, error) {
 	m := &Manager{
 		BasicConnMgr: cm,
 		cfg:          cfg,
+		ready:        false,
 	}
 	return m, nil
 }
 
-func (m *Manager) SetProtoUtils(pu *utils.ProtoUtils) {
+func (m *Manager) SetDeps(pu *utils.ProtoUtils, os *protocols.OrgSigProtocol, c *Connecter) {
 	m.ProtoUtils = pu
-}
-
-func (m *Manager) SetOrgSigProtocol(os *protocols.OrgSigProtocol) {
 	m.orgSigProtocol = os
+	m.connecter = c
+	m.ready = true
 }
 
 func (m *Manager) SetReliabilityTagCallback() reliability.Callback {
@@ -110,6 +117,9 @@ func (m *Manager) disconnected(_ network.Network, c network.Conn) {
 
 	// notify TL about a change
 	m.notifyTL()
+
+	// check if we should try to add new connections cuz we have too few
+	m.connecter.notify()
 }
 
 // Notifee returns a sink through which Notifiers can inform the Manager when
@@ -121,6 +131,10 @@ func (m *Manager) Notifee() network.Notifiee {
 // Connected is called by notifiers to inform that a new connection has
 // been established.
 func (m *Manager) Connected(n network.Network, c network.Conn) {
+	for !m.ready {
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	// call parent libp2p notifee
 	m.BasicConnMgr.Notifee().Connected(n, c)
 
@@ -131,6 +145,10 @@ func (m *Manager) Connected(n network.Network, c network.Conn) {
 // Disconnected is called by notifiers to inform that an existing connection
 // has been closed or terminated.
 func (m *Manager) Disconnected(n network.Network, c network.Conn) {
+	for !m.ready {
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	// call parent libp2p notifee
 	m.BasicConnMgr.Notifee().Disconnected(n, c)
 

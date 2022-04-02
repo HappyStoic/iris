@@ -79,11 +79,6 @@ func NewBook(cfg *config.OrgConfig, dht *ldht.Dht, me peer.ID) (*Book, error) {
 		VerifiedSignatures: make(map[peer.ID][]*Org),
 	}
 
-	// default value of update period
-	if b.updateEvery == 0 {
-		b.updateEvery = time.Minute * 5
-	}
-
 	return b, nil
 }
 

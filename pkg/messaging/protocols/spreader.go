@@ -68,7 +68,7 @@ func (s *Spreader) spread(protocol protocol.ID,
 	visited map[peer.ID]struct{},
 	msg proto.Message) {
 
-	peers := s.GetNConnectedPeers(nPeers, rights, visited)
+	peers := s.GetNPeers(s.ConnectedPeers(), nPeers, rights, visited)
 	log.Debugf("spreading file meta to %d peers", len(peers))
 	for _, p := range peers {
 		err := s.SendProtoMessage(p, protocol, msg)

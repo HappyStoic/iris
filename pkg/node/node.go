@@ -8,7 +8,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/routing"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"github.com/pkg/errors"
@@ -56,7 +55,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	metricsTest := metrics.NewBandwidthCounter() // TODO use metrics somehow?
+	//metricsTest := metrics.NewBandwidthCounter() // TODO use metrics somehow?
 	//go func() {
 	//	for {
 	//		time.Sleep(10 * time.Second)
@@ -73,7 +72,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		libp2p.Identity(key),
 		// Multiple listen addresses
 		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", conf.Server.Port), // a UDP endpoint for the QUIC transport
+			fmt.Sprintf("/ip4/%s/udp/%d/quic", conf.Server.Host, conf.Server.Port), // a UDP endpoint for the QUIC transport
 		),
 		// support QUIC
 		libp2p.Transport(libp2pquic.NewTransport),
@@ -96,7 +95,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		// This service is highly rate-limited and should not cause any
 		// performance issues.
 		libp2p.EnableNATService(),
-		libp2p.BandwidthReporter(metricsTest),
+		//libp2p.BandwidthReporter(metricsTest),
 	)
 	if err != nil {
 		return nil, err
@@ -128,7 +127,7 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 
 	// setup kits
 	cryptoKit := cryptotools.NewCryptoKit(p2phost)
-	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook, relBook)
+	protoUtils := utils.NewProtoUtils(cryptoKit, p2phost, redisClient, orgBook, relBook, dht)
 
 	// setup all protocols
 	n.OrgSigProtocol = protocols.NewOrgSigProtocol(protoUtils)
@@ -138,11 +137,13 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 	n.FileShareProtocol = protocols.NewFileShareProtocol(ctx, protoUtils, fileBook, dht, &conf.ProtocolSettings.FileShare)
 	_ = protocols.NewReliabilityReceiver(protoUtils, relBook)
 
-	// inject missing dependencies
-	cm.SetProtoUtils(protoUtils)
-	cm.SetOrgSigProtocol(n.OrgSigProtocol)
+	connecter := connmgr.NewConnecter(&conf.Connections, protoUtils)
+	connecter.Start(ctx)
 
-	// setup callbacks TODO test this
+	// inject missing dependencies
+	cm.SetDeps(protoUtils, n.OrgSigProtocol, connecter)
+
+	// setup callbacks
 	relBook.SubscribeForChange(cm.SetReliabilityTagCallback())
 
 	return n, nil

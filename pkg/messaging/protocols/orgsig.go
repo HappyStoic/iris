@@ -31,6 +31,15 @@ func (os *OrgSigProtocol) AskForOrgSignatures(p peer.ID) {
 		return
 	}
 
+	// TODO: if he does not provide signatures that DHT claimed he has, is that an issue?
+	//		 maybe I should report him and disconnect? But is it truly his fault? Could someone poison
+	//	     the DHT without him knowing it? In that case it's not his fault. That could be done if
+	//		 adversarial control the soring peer. But can adversarial poison the DHT like this
+	//       without controlling such peer?
+	//		 Answer: "Note: Currently you are only allowed to put a provider record for yourself (i.e. Alice cannot advertise that Bob has content)"
+	//				  https://blog.ipfs.io/2020-07-20-dht-deep-dive/
+	//       That means we can report here the peer if we guarantee that the adversarial cannot control the storing peer
+
 	// TODO: ask just once in a period of time?
 
 	log.Debugf("requesting org signatures from peer '%s'", p)

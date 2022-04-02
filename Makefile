@@ -27,3 +27,6 @@ protobuf:
 
 network:
 	docker-compose up --build --force-recreate
+
+experiment: build
+	go run experiments/main.go experiments/instance.go experiments/experiment.go

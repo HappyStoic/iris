@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"happystoic/p2pnetwork/pkg/dht"
 	"io/ioutil"
 	"math"
 	"math/rand"
@@ -39,15 +40,20 @@ type ProtoUtils struct {
 	RedisClient *clients.RedisClient
 	OrgBook     *org.Book
 	RelBook     *reliability.Book
+	Dht         *dht.Dht
 }
 
-func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient, ob *org.Book, rb *reliability.Book) *ProtoUtils {
+func NewProtoUtils(ck *cryptotools.CryptoKit, host host.Host, client *clients.RedisClient, ob *org.Book, rb *reliability.Book, dht *dht.Dht) *ProtoUtils {
 	msgCache := newMessageCache()
-	return &ProtoUtils{ck, msgCache, host, client, ob, rb}
+	return &ProtoUtils{ck, msgCache, host, client, ob, rb, dht}
 }
 
 func (pu *ProtoUtils) ConnectedPeers() []peer.ID {
 	return pu.Host.Network().Peers()
+}
+
+func (pu *ProtoUtils) NumberOfConnections() int {
+	return len(pu.Host.Network().Peers())
 }
 
 func (pu *ProtoUtils) OpenStream(id peer.ID, protocol protocol.ID) (network.Stream, error) {
@@ -161,7 +167,13 @@ func (pu *ProtoUtils) ReportPeer(p peer.ID, reason string) error {
 	return pu.RedisClient.PublishMessage("nl2tl_peer_report", report)
 }
 
-func (pu *ProtoUtils) GetNConnectedPeers(n int, rights []*org.Org, blacklist map[peer.ID]struct{}) []peer.ID {
+func (pu *ProtoUtils) GetNPeersAllAllow(from []peer.ID, n int) []peer.ID {
+	var noRights []*org.Org
+	var blacklist map[peer.ID]struct{}
+	return pu.GetNPeers(from, n, noRights, blacklist)
+}
+
+func (pu *ProtoUtils) GetNPeers(from []peer.ID, n int, rights []*org.Org, blacklist map[peer.ID]struct{}) []peer.ID {
 	selected := make(map[peer.ID]struct{})
 	for i := 0; i < n; i++ {
 		target := RandReliability()
@@ -169,7 +181,7 @@ func (pu *ProtoUtils) GetNConnectedPeers(n int, rights []*org.Org, blacklist map
 		var candidate peer.ID
 		var candidateDistance float64
 
-		for _, p := range pu.ConnectedPeers() {
+		for _, p := range from {
 			// don't take already selected peers
 			if _, exists := selected[p]; exists {
 				continue

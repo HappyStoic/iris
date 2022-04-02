@@ -56,7 +56,7 @@ func (ck *CryptoKit) AuthenticateMessage(message proto.Message, metadata *pb.Met
 		return nil
 	}
 
-	valid, err := key.Verify(bin, sign) // TODO maybe use []byte(sign)
+	valid, err := key.Verify(bin, sign)
 	if err != nil {
 		return err
 	}

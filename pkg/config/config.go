@@ -27,6 +27,7 @@ type Server struct {
 	// UDP Port to listen on. Missing or zero value indicates random port
 	// between <9000,11000>
 	Port uint32
+	Host string
 }
 
 func (s *Server) validate() error {
@@ -37,15 +38,19 @@ func (s *Server) validate() error {
 }
 
 func (s *Server) setDefaults() error {
+	if s.Host == "" {
+		s.Host = "127.0.0.1"
+	}
 	if s.Port != 0 {
-		var p uint32
-		for p = 9000; p < 11000; p++ {
-			err := utils.CheckUDPPortAvailability(p)
-			if err == nil {
-				// found free port
-				s.Port = p
-				return nil
-			}
+		return nil
+	}
+	var p uint32
+	for p = 9000; p < 11000; p++ {
+		err := utils.CheckUDPPortAvailability(p)
+		if err == nil {
+			// found free port
+			s.Port = p
+			return nil
 		}
 	}
 	return errors.Errorf("no available port found")
@@ -54,11 +59,16 @@ func (s *Server) setDefaults() error {
 type Connections struct {
 	// lower bound for number of connections
 	Low int
-	// number of connections this peer will proactively seek. Others will be
-	// saved for incoming connections
+	// number of connections this peer will proactively seek. Other slots will
+	// be saved for incoming connections
 	Medium int
 	// upper bound for number of connections
 	High int
+
+	// ReconnectInterval sets how often we try to connect to new peers if
+	// number of peers is below Medium. Negative value disables updater.
+	// Defaults to 10 minutes
+	ReconnectInterval time.Duration
 }
 
 func (c *Connections) setDefaults() {
@@ -71,6 +81,9 @@ func (c *Connections) setDefaults() {
 	if c.High == 0 {
 		c.High = 50
 	}
+	if c.ReconnectInterval == 0 {
+		c.ReconnectInterval = 10 * time.Minute
+	}
 }
 
 type OrgConfig struct {
@@ -79,6 +92,12 @@ type OrgConfig struct {
 
 	// DhtUpdatePeriod says often to ask DHT about members of trusted orgs
 	DhtUpdatePeriod time.Duration
+}
+
+func (o *OrgConfig) setDefaults() {
+	if o.DhtUpdatePeriod == 0 {
+		o.DhtUpdatePeriod = time.Minute * 5
+	}
 }
 
 type OrgSig struct {
@@ -99,7 +118,6 @@ type IdentityConfig struct {
 }
 
 func (ic *IdentityConfig) validate() error {
-	fmt.Println(ic)
 	if ic.GenerateNewKey && ic.LoadKeyFromFile != "" {
 		return errors.New("cannot generate new key and load one from file at the same time")
 	}
@@ -141,9 +159,6 @@ type ProtocolSettings struct {
 }
 
 func (ps *ProtocolSettings) validate() error {
-	if ps.Recommendation.Timeout == 0 {
-		return errors.New("ProtocolSettings.Recommendation.Timeout must be set")
-	}
 	for sev, settings := range ps.FileShare.MetaSpreadSettings {
 		uSev := strings.ToUpper(sev)
 		if uSev != "MINOR" && uSev != "MAJOR" && uSev != "CRITICAL" {
@@ -171,6 +186,21 @@ func (ps *ProtocolSettings) validate() error {
 func (ps *ProtocolSettings) setDefaults() {
 	if ps.FileShare.DownloadDir == "" {
 		ps.FileShare.DownloadDir = "/tmp"
+	}
+	if ps.Recommendation.Timeout == 0 {
+		ps.Recommendation.Timeout = 10 * time.Second
+	}
+	if ps.Intelligence.MaxTtl == 0 {
+		ps.Intelligence.MaxTtl = 5
+	}
+	if ps.Intelligence.Ttl == 0 {
+		ps.Intelligence.Ttl = 5
+	}
+	if ps.Intelligence.RootTimeout == 0 {
+		ps.Intelligence.RootTimeout = 10 * time.Second
+	}
+	if ps.Intelligence.MaxParentTimeout == 0 {
+		ps.Intelligence.MaxParentTimeout = 10 * time.Second
 	}
 }
 
@@ -220,6 +250,7 @@ func (c *Config) Check() error {
 	c.Redis.setDefaults()
 	c.ProtocolSettings.setDefaults()
 	c.Connections.setDefaults()
+	c.Organisations.setDefaults()
 	if err := c.Server.setDefaults(); err != nil {
 		return err
 	}
