@@ -1,7 +1,9 @@
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Tuple, Callable
 
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from jaal import Jaal
@@ -65,24 +67,19 @@ class SpreadScenario:
 @dataclass(frozen=True)
 class ScenarioResult:
     success: bool
+    success_good_peers:  bool
+
     end_tick: int
-    spam_msgs: int
-    spam_msgs_good_peers: int
-    success_msgs: int
+    end_tick_good_peers: int
+
+    repeated_msgs: int
+    repeated_msgs_good_peers: int
+
+    good_peers_notified: int
     unreliable_msgs: int
     spread_edges: Set[Tuple[int, int]]
     spread_ticks: Dict[Tuple[int, int], str]
     msgs_history: Dict[int, List[Tuple[int, int]]]
-    tick_of_25_spread: int
-    tick_of_50_spread: int
-    tick_of_75_spread: int
-    tick_of_95_spread: int
-    tick_of_25_good_spread: int
-    tick_of_50_good_spread: int
-    tick_of_75_good_spread: int
-    tick_of_95_good_spread: int
-    good_peers_in_network: int
-    good_peers_notified: int
 
 
 @dataclass(frozen=True)
@@ -201,38 +198,29 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
     peers_ticks_offsets = [None for _ in network.peers]
     peers_possible_recipients: List[List[int]] = [[f if f != p.idx else t for (f, t) in p.edges] for p in network.peers]
 
-    spread25, spread50, spread75, spread95 = None, None, None, None
-    spread25_good_peers, spread50_good_peers, spread75_good_peers, spread95_good_peers = None, None, None, None
-    spam_msgs = 0
-    spam_msgs_good_peers = 0
-    success_msgs = 0
+    success, success_good_peers = False, False
+    end_tick, end_tick_good_peers = 0, 0
+    repeated_msgs, repeated_msgs_good_peers = 0, 0
+
     unreliable_msgs = 0
-    msgs_history = defaultdict(list)
-    success = False
     spread_edges = set()
     spread_ticks = {}
+    msgs_history = defaultdict(list)
+
     good_peers_notified = 0
-
     total_good_peers = len([None for p in network.peers if p.is_benign])
-    quarter_good_peers = total_good_peers / 4
-    half_good_peers = total_good_peers / 2
-    three_quarter_good_peers = 3 * quarter_good_peers
-    perc95_good_peers = 95 * (total_good_peers / 100)
-
-    quarter_peers = len(network.peers) / 4
-    half_peers = len(network.peers) / 2
-    three_quarter_peers = 3 * quarter_peers
-    perc95_peers = 95 * len(network.peers) / 100
 
     for tick in range(scenario.max_scenario_ticks):
+        end_tick = tick
+
         # read messages from inbox
         for (from_p, spread_to) in spread_inbox:
             msgs_history[tick].append((from_p, spread_to))
             if spread_to in received_peers:
-                spam_msgs += 1
+                repeated_msgs += 1
 
                 if network.peers[spread_to].is_benign:
-                    spam_msgs_good_peers += 1
+                    repeated_msgs_good_peers += 1
 
                 # we don't want to send msg to peers that told us that they already know about the msg
                 try:
@@ -242,29 +230,15 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
 
                 continue
 
-            success_msgs += 1
             received_peers.add(spread_to)
             peers_ticks_offsets[spread_to] = tick
 
             if network.peers[spread_to].is_benign:
                 good_peers_notified += 1
-                if not spread25_good_peers and good_peers_notified > quarter_good_peers:
-                    spread25_good_peers = tick
-                if not spread50_good_peers and good_peers_notified > half_good_peers:
-                    spread50_good_peers = tick
-                if not spread75_good_peers and good_peers_notified > three_quarter_good_peers:
-                    spread75_good_peers = tick
-                if not spread95_good_peers and good_peers_notified > perc95_good_peers:
-                    spread95_good_peers = tick
+                if good_peers_notified == total_good_peers:
+                    success_good_peers = True
+                    end_tick_good_peers = tick
 
-            if not spread25 and len(received_peers) > quarter_peers:
-                spread25 = tick
-            if not spread50 and len(received_peers) > half_peers:
-                spread50 = tick
-            if not spread75 and len(received_peers) > three_quarter_peers:
-                spread75 = tick
-            if not spread95 and len(received_peers) > perc95_peers:
-                spread95 = tick
 
             if from_p is not None:
                 peers_possible_recipients[spread_to].remove(from_p)
@@ -309,24 +283,19 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
                 spread_inbox.add((p, send_to))
 
     res = ScenarioResult(success=success,
-                         end_tick=tick,
-                         spam_msgs=spam_msgs,
-                         spam_msgs_good_peers=spam_msgs_good_peers,
-                         success_msgs=success_msgs,
-                         unreliable_msgs=unreliable_msgs,
-                         msgs_history=msgs_history,
-                         spread_edges=spread_edges,
-                         tick_of_25_spread=spread25,
-                         tick_of_50_spread=spread50,
-                         tick_of_75_spread=spread75,
-                         tick_of_95_spread=spread95,
-                         tick_of_25_good_spread=spread25_good_peers,
-                         tick_of_50_good_spread=spread50_good_peers,
-                         tick_of_75_good_spread=spread75_good_peers,
-                         tick_of_95_good_spread=spread95_good_peers,
-                         good_peers_in_network=total_good_peers,
+                         success_good_peers=success_good_peers,
+
+                         end_tick=end_tick,
+                         end_tick_good_peers=end_tick_good_peers,
+
+                         repeated_msgs=repeated_msgs,
+                         repeated_msgs_good_peers=repeated_msgs_good_peers,
+
                          good_peers_notified=good_peers_notified,
-                         spread_ticks=spread_ticks, )
+                         unreliable_msgs=unreliable_msgs,
+                         spread_edges=spread_edges,
+                         spread_ticks=spread_ticks,
+                         msgs_history=msgs_history)
     return res
 
 
@@ -396,14 +365,14 @@ def run(testing_scenarios: List[SpreadScenario], max_peers=50, n_networks=10) ->
         networks.append(network)
         networks_cnt += 1
 
-        if networks_cnt % 25 == 0:
+        if networks_cnt % 5 == 0:
             print(f"{networks_cnt}th network done and evaluated")
 
     print(f"Done... {networks_cnt}th network done and evaluated")
     return networks, results
 
 
-def new_scenarios(num_peers: int, each_tick: int, total_ticks: int, max_scenario_ticks=10000) -> List[SpreadScenario]:
+def all_pickers_scenario(num_peers: int, each_tick: int, total_ticks: int, max_scenario_ticks=10000) -> List[SpreadScenario]:
     txt = f"spreading up to {num_peers} peers every {each_tick} tick for maximum {total_ticks} ticks with "
     return [
         SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick, spread_total_ticks=total_ticks,
@@ -418,15 +387,81 @@ def new_scenarios(num_peers: int, each_tick: int, total_ticks: int, max_scenario
     ]
 
 
-def test():
-    testing_scenarios = new_scenarios(num_peers=2, each_tick=10, total_ticks=100)
-    testing_scenarios += new_scenarios(num_peers=2, each_tick=5, total_ticks=100)
-    testing_scenarios += new_scenarios(num_peers=5, each_tick=100, total_ticks=500)
-    testing_scenarios += new_scenarios(num_peers=99, each_tick=10, total_ticks=50)
-    testing_scenarios += new_scenarios(num_peers=99, each_tick=1, total_ticks=0)
+def get_scenarios() -> List[SpreadScenario]:
+    ALL = 99999
 
-    networks, rel_results = run(testing_scenarios, n_networks=5)
+    total_ticks_opts = [1, 5, 100, ALL]
+    each_tick_opts = [1, 2, 4, 10, 20, 50, 100, 500]
+    num_peers_opts = [1, 2, 3, 5, 7, 9, ALL]
+    s = []
+    for total_ticks in total_ticks_opts:
+        for each_tick in each_tick_opts:
+            if each_tick > total_ticks:
+                continue
+            for num_peers in num_peers_opts:
+                s += all_pickers_scenario(num_peers=num_peers, each_tick=each_tick, total_ticks=total_ticks)
+    return s
+
+
+def run_process(q: mp.Queue, n_networks, testing_scenarios: List[SpreadScenario], max_peers=50):
+    random.seed(os.getpid())
+    networks, rel_results = run(testing_scenarios, n_networks=n_networks, max_peers=max_peers)
+    q.put((networks, rel_results))
+
+
+def test_multiprocess(scenarios: List[SpreadScenario], total_networks : int = 50, n_procs: int = 5, max_peers=50) -> Tuple[List[Network], List[NetworkResult]]:
+    print("running multiprocess test")
+
+    process_networks = total_networks // n_procs
+    q = mp.Queue()
+    networks, results = [], defaultdict(list)
+    procs = []
+    for i in range(n_procs):
+        p = mp.Process(target=run_process, args=(q, process_networks, scenarios, max_peers))
+        print(f"process {i} started")
+        p.start()
+        procs.append(p)
+
+    for _ in range(n_procs):
+        sub_networks, sub_results = q.get()
+        networks += sub_networks
+        for k, sub_v in sub_results.items():
+            results[k] += sub_v
+
+    for i, p in enumerate(procs):
+        p.join()
+        print(f"process {i} finished")
+
+    print("done")
+    print(f"total networks received {len(networks)}")
+    return networks, results
+
+
+def test(scenarios: List[SpreadScenario]):
+    networks, rel_results = run(scenarios, n_networks=5)
+
+
+def save_results(exp_name: str, data: Tuple[List[Network], List[NetworkResult], List[SpreadScenario]]):
+    import pickle
+
+    file = f"{exp_name}.pickle"
+    with open(file, 'wb') as handle:
+        pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    print(f"saved result into {file}")
 
 
 if __name__ == "__main__":
-    test()
+    save = True
+    experiment = "exp-big1"
+    scenarios = get_scenarios()
+    total_networks = 100
+    max_peers = 100
+    n_procs = 7
+
+    # test(scenarios=scenarios)
+    networks, results = test_multiprocess(scenarios=scenarios, total_networks=total_networks, n_procs=n_procs, max_peers=max_peers)
+
+    if save:
+        save_results(experiment, (networks, results, scenarios))
+    print("the end")
