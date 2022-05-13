@@ -28,17 +28,18 @@ const version = "v0.0.1"
 func parseFlags() (*string, *string, *bool, *string, error) {
 	// flags regarding the organisation key
 	loadKeyPath := flag.String("load-key-path", "",
-		"Path to a file with org private key. If not set, new key is "+
-			"generated")
-	saveKeyPath := flag.String("save-key-path", "", "Path "+
-		"where to save org key")
+		"Path to a file with organisation private key. If not set, new "+
+			"private-key is generated.")
+	saveKeyPath := flag.String("save-key-path", "", "If "+
+		"set, value will be used as a path to save organisation private-key.")
 
 	// flags regarding the signature of a peer
-	signPeer := flag.Bool("sign-peer", false, "Whether to "+
+	signPeer := flag.Bool("sign-peer", false, "Flag to "+
 		"sign peer ID. Flag peer-id can be used to set peer"+
-		"ID, otherwise, cli will ask")
+		"ID, otherwise, cli will ask. The signature will be printed to stdout.")
 	peerId := flag.String("peer-id", "",
-		"Public ID of a peer to sign")
+		"Public ID of a peer to sign. Flag --sign-peer must be "+
+			"set for this option to be valid.")
 
 	flag.Parse() // parse the args
 
@@ -76,7 +77,7 @@ func produceOutput(key crypto.PrivKey, saveKeyPath string, signature string) err
 	out.WriteString("\n")
 
 	if signature != "" {
-		out.WriteString(fmt.Sprintf("Peer's signature:\n\t%s\n", signature))
+		out.WriteString(fmt.Sprintf("Peer's signature:\n%s\n\n", signature))
 	}
 
 	if saveKeyPath != "" {
@@ -88,13 +89,15 @@ func produceOutput(key crypto.PrivKey, saveKeyPath string, signature string) err
 		if err != nil {
 			return err
 		}
-		out.WriteString(fmt.Sprintf("Saved org priv key to:\n\t%s\n", saveKeyPath))
+		out.WriteString(fmt.Sprintf("Saved organisation private key to path:"+
+			"\n\t%s\n", saveKeyPath))
 	}
 	pubId, err := peer.IDFromPrivateKey(key)
 	if err != nil {
 		return err
 	}
-	out.WriteString(fmt.Sprintf("Org's ID (public key) that can be used in peer's configuration as trusted org is:\n\t%s\n", pubId.String()))
+	out.WriteString(fmt.Sprintf("Organisation's ID (public-key):"+
+		"\n\t%s\n\n", pubId.String()))
 
 	fmt.Print(out.String())
 	return nil
@@ -117,7 +120,7 @@ func getPeerToSign(peerIdArg string) (peer.ID, error) {
 }
 
 func main() {
-	fmt.Printf("Running %s orggensign\n", version)
+	fmt.Printf("Running %s orgsig\n\n", version)
 
 	// process command line arguments
 	loadKeyPath, saveKeyPath, signPeer, peerId, err := processArgs()
@@ -130,11 +133,15 @@ func main() {
 	if *loadKeyPath != "" {
 		i = config.IdentityConfig{LoadKeyFromFile: *loadKeyPath}
 	} else {
+		if *saveKeyPath == "" {
+			fatal(2, fmt.Errorf("--save-key-path must be set"+
+				" when generating new organisation private key"))
+		}
 		i = config.IdentityConfig{GenerateNewKey: true}
 	}
 	key, err := cryptotools.GetPrivateKey(&i)
 	if err != nil {
-		fatal(2, err)
+		fatal(3, err)
 	}
 
 	// sign the peer if possible
@@ -149,7 +156,8 @@ func main() {
 			fatal(5, err)
 		}
 	}
-	// print output
+
+	// produce desired output
 	err = produceOutput(key, *saveKeyPath, signature)
 	if err != nil {
 		fatal(6, err)
