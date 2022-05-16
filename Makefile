@@ -6,8 +6,12 @@ run-debug:
 run:
 	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
 
-orggensign:
-	go run cmd/orggensign.go
+orgsig:
+	go build cmd/orgsig.go
+
+run-orgsig:
+	go run cmd/orgsig.go
+
 
 run0:
 	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config0.yaml

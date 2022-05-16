@@ -13,6 +13,10 @@ import (
 
 var log = logging.Logger("p2pnetwork")
 
+var BootstrappingNodes = []string{
+	// TODO add bootstrapping nodes when deployed
+}
+
 func GetInitPeers(pd config.PeerDiscovery) ([]*peer.AddrInfo, error) {
 	multiAddrs := make([]*peer.AddrInfo, 0)
 
@@ -25,6 +29,18 @@ func GetInitPeers(pd config.PeerDiscovery) ([]*peer.AddrInfo, error) {
 		}
 
 		multiAddrs = append(multiAddrs, ai)
+	}
+
+	if !pd.DisableBootstrappingNodes {
+		for _, s := range BootstrappingNodes {
+			ai, err := addrInfoFromConnectionString(s)
+			if err != nil {
+				log.Errorf("error creating AddrInfo from boostrapping node %s: %s", s, err)
+				continue
+			}
+
+			multiAddrs = append(multiAddrs, ai)
+		}
 	}
 
 	if pd.UseRedisCache {

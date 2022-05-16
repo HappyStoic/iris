@@ -26,8 +26,9 @@ type Config struct {
 type Server struct {
 	// UDP Port to listen on. Missing or zero value indicates random port
 	// between <9000,11000>
-	Port uint32
-	Host string
+	Port          uint32
+	Host          string
+	DhtServerMode bool // default (false) means auto mode
 }
 
 func (s *Server) validate() error {
@@ -106,9 +107,10 @@ type OrgSig struct {
 }
 
 type PeerDiscovery struct {
-	UseDns               bool
-	UseRedisCache        bool
-	ListOfMultiAddresses []string
+	UseDns                    bool
+	UseRedisCache             bool
+	DisableBootstrappingNodes bool
+	ListOfMultiAddresses      []string
 }
 
 type IdentityConfig struct {

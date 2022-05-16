@@ -61,7 +61,7 @@ func loadConfig() (*config.Config, error) {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(time.Now().UnixNano()) // Todo use something more cryptographically secure
 
 	// load configuration
 	cfg, err := loadConfig()

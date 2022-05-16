@@ -15,8 +15,12 @@ type Dht struct {
 	ctx context.Context
 }
 
-func New(ctx context.Context, host host.Host) (*Dht, error) {
-	iDht, err := ipfsDht.New(ctx, host, ipfsDht.Mode(ipfsDht.ModeServer))
+func New(ctx context.Context, host host.Host, serverMode bool) (*Dht, error) {
+	mode := ipfsDht.Mode(ipfsDht.ModeAuto)
+	if serverMode {
+		mode = ipfsDht.Mode(ipfsDht.ModeServer)
+	}
+	iDht, err := ipfsDht.New(ctx, host, ipfsDht.ProtocolPrefix("/iris"), mode)
 	return &Dht{iDht, ctx}, err
 }
 

@@ -7,7 +7,7 @@ import (
 func GetInitCachePeers() ([]*peer.AddrInfo, error) {
 	multiaddrs := make([]*peer.AddrInfo, 0)
 
-	// TODO
+	// TODO: future work
 
 	return multiaddrs, nil
 }
