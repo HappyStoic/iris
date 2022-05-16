@@ -25,7 +25,7 @@ import (
 	"happystoic/p2pnetwork/pkg/reliability"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 type PeerMetadata struct {
 	Id            string   `json:"id"`

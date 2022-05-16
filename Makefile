@@ -1,10 +1,10 @@
 PROTOBUF_DIR=`pwd`/pkg/messaging/pb
 
 run-debug:
-	GOLOG_LOG_LEVEL="dht=debug,p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
+	GOLOG_LOG_LEVEL="dht=debug,iris=debug" go run cmd/peercli.go --conf config.yaml
 
 run:
-	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
+	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config.yaml
 
 orgsig:
 	go build cmd/orgsig.go
@@ -14,13 +14,13 @@ run-orgsig:
 
 
 run0:
-	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config0.yaml
+	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config0.yaml
 
 run1:
-	GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config1.yaml
+	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config1.yaml
 
 run-do-something:
-	DO_SOMETHING="1" GOLOG_LOG_LEVEL="p2pnetwork=debug" go run cmd/peercli.go --conf config.yaml
+	DO_SOMETHING="1" GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config.yaml
 
 
 build:

@@ -11,7 +11,7 @@ import (
 	"happystoic/p2pnetwork/pkg/config"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 var BootstrappingNodes = []string{
 	// TODO add bootstrapping nodes when deployed

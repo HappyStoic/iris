@@ -13,7 +13,7 @@ import (
 	"happystoic/p2pnetwork/pkg/config"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 type Callback func(data []byte)
 

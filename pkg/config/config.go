@@ -11,7 +11,7 @@ import (
 	"happystoic/p2pnetwork/pkg/utils"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 type Config struct {
 	Identity         IdentityConfig

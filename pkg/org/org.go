@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 // TODO: use this to write docs?
 // # I trust some organisations, thus I need:

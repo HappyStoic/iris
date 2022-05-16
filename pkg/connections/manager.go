@@ -38,7 +38,7 @@ import (
 // TODO:
 //		* move initialisaion of connections here? that would make sense?
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 type RedisNotifyChange struct {
 	Peers []utils.PeerMetadata `json:"peers"`

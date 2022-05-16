@@ -12,7 +12,7 @@ import (
 	"happystoic/p2pnetwork/pkg/messaging/utils"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 // p2p protocol definition
 const p2pAlertProtocol = "/alert/0.0.1"

@@ -25,7 +25,7 @@ import (
 	"happystoic/p2pnetwork/pkg/reliability"
 )
 
-var log = logging.Logger("p2pnetwork")
+var log = logging.Logger("iris")
 
 type Node struct {
 	host.Host                // TODO is host really important here?
