@@ -1,10 +1,10 @@
+import multiprocessing as mp
 import os
+import time
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Dict, Set, Tuple, Callable
 
-import multiprocessing as mp
-import numpy as np
 import pandas as pd
 from jaal import Jaal
 from numpy import random
@@ -28,13 +28,13 @@ class Network:
     def assign_reliabilities(self, malicious_ratio: float, malicious_mean_rel: float, benign_mean_rel: float,
                              trust_accuracy: float):
         peers_total = len(self.peers)
-        malicious_total = int(peers_total*malicious_ratio)
+        malicious_total = int(peers_total * malicious_ratio)
         benign_total = peers_total - malicious_total
 
         peer_indices = list(range(peers_total))
         random.shuffle(peer_indices)
 
-        rels = random.normal(loc=[malicious_mean_rel]*malicious_total + [benign_mean_rel]*benign_total, scale=0.15)
+        rels = random.normal(loc=[malicious_mean_rel] * malicious_total + [benign_mean_rel] * benign_total, scale=0.15)
 
         for i, (peer_idx, rel) in enumerate(zip(peer_indices, rels)):
             self.peers[peer_idx].is_benign = i >= malicious_total
@@ -58,7 +58,6 @@ class Network:
 class SpreadScenario:
     spread_n_peers: int
     spread_tick_interval: int
-    spread_total_ticks: int
     max_scenario_ticks: int
     recipient_picker: Callable[[Peer, List[int]], int]
     description: str
@@ -67,7 +66,7 @@ class SpreadScenario:
 @dataclass(frozen=True)
 class ScenarioResult:
     success: bool
-    success_good_peers:  bool
+    success_good_peers: bool
 
     end_tick: int
     end_tick_good_peers: int
@@ -192,7 +191,7 @@ def plot(network: Network, result: ScenarioResult):
 # Possible candidates for recipients:
 #       * I have not sent the msg to this peer yet
 #       * This peer did not send me the msg at any point in the history
-def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
+def evaluate(network: Network, scenario: SpreadScenario, with_history=False) -> ScenarioResult:
     spread_inbox = {(None, network.start)}
     received_peers = set()
     peers_ticks_offsets = [None for _ in network.peers]
@@ -239,7 +238,6 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
                     success_good_peers = True
                     end_tick_good_peers = tick
 
-
             if from_p is not None:
                 peers_possible_recipients[spread_to].remove(from_p)
 
@@ -258,10 +256,6 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
         # send messages
         for p in received_peers:
             peers_tick = tick - peers_ticks_offsets[p]
-            if peers_tick > scenario.spread_total_ticks:
-                # timeout of ticks for this peer
-                continue
-
             if peers_tick % scenario.spread_tick_interval != 0:
                 # this peer is not sending msgs in this tick
                 continue
@@ -295,35 +289,41 @@ def evaluate(network: Network, scenario: SpreadScenario) -> ScenarioResult:
                          unreliable_msgs=unreliable_msgs,
                          spread_edges=spread_edges,
                          spread_ticks=spread_ticks,
-                         msgs_history=msgs_history)
+                         msgs_history=msgs_history if with_history else {}
+                         )
     return res
 
 
+# chooses recipient with the biggest reliability
 def reliability_first_picker(sender: Peer, recipients: List[int]) -> int:
     return max(recipients, key=lambda idx: sender.rel_book[idx])
 
 
-def reliability_favor_picker(sender: Peer, recipients: List[int]) -> int:
-    rel_book = sender.rel_book
+# chooses recipient from candidates with exponentially weighted probability
+# the exponential function is y=((a^x) - 1)/(a - 1) with a=10
+# see plotted function at https://www.desmos.com/calculator/glz5g7fvrz
+def reliability_exp_weight_picker(sender: Peer, recipients: List[int]) -> int:
     a = 10
+    exp = lambda x: ((a ** x) - 1) / (a - 1)
 
-    rand_rel = 1 - ((a ** random.rand()) - 1) / (a - 1)
-    best_peer = recipients[0]
-    best_dist = np.abs(rel_book[best_peer] - rand_rel)
-    for candidate in recipients[1:]:
-        cur_dist = np.abs(rel_book[candidate] - rand_rel)
-        if cur_dist < best_dist:
-            best_dist = cur_dist
-            best_peer = candidate
+    rel_book = sender.rel_book
+    transformed_rels = [exp(rel_book[p]) for p in recipients]
+    total = sum(transformed_rels)
+    if total == 0:
+        # if sum of transformed values equals 0, all peers have the same zero reliability => chosen randomly
+        return random_picker(sender, recipients)
+    normalized_probs = [x/total for x in transformed_rels]
+    chosen = random.choice(recipients, 1, p=normalized_probs)[0]
+    return chosen
 
-    return best_peer
 
-
+# choose recipient with uniform probability
 def random_picker(_: Peer, recipients: List[int]) -> int:
     return random.choice(recipients)
 
 
-def run(testing_scenarios: List[SpreadScenario], max_peers=50, n_networks=10) -> (List[Network], Dict[float, List[NetworkResult]]):
+def run(testing_scenarios: List[SpreadScenario], max_peers=50, n_networks=10) -> (
+List[Network], Dict[float, List[NetworkResult]]):
     networks_peers = random.randint(low=2, high=max_peers, size=n_networks)
 
     malicious_ratios = [0.0, 0.25, 0.5, 0.75]
@@ -342,7 +342,6 @@ def run(testing_scenarios: List[SpreadScenario], max_peers=50, n_networks=10) ->
             continue
 
         for malicious_ratio in malicious_ratios:
-
             m_idx = random.randint(low=0, high=len(malicious_mean_reliabilities))
             b_idx = random.randint(low=m_idx, high=len(benign_mean_reliabilities))
             malicious_rel = malicious_mean_reliabilities[m_idx]
@@ -369,19 +368,19 @@ def run(testing_scenarios: List[SpreadScenario], max_peers=50, n_networks=10) ->
             print(f"{networks_cnt}th network done and evaluated")
 
     print(f"Done... {networks_cnt}th network done and evaluated")
-    return networks, results
+    return [], results
 
 
-def all_pickers_scenario(num_peers: int, each_tick: int, total_ticks: int, max_scenario_ticks=10000) -> List[SpreadScenario]:
-    txt = f"spreading up to {num_peers} peers every {each_tick} tick for maximum {total_ticks} ticks with "
+def all_pickers_scenario(num_peers: int, each_tick: int, max_scenario_ticks=10000) -> List[SpreadScenario]:
+    txt = f"spreading up to {num_peers} peers every {each_tick} tick "
     return [
-        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick, spread_total_ticks=total_ticks,
+        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick,
                        max_scenario_ticks=max_scenario_ticks, recipient_picker=reliability_first_picker,
                        description=f"{txt} reliability first picker"),
-        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick, spread_total_ticks=total_ticks,
-                       max_scenario_ticks=max_scenario_ticks, recipient_picker=reliability_favor_picker,
+        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick,
+                       max_scenario_ticks=max_scenario_ticks, recipient_picker=reliability_exp_weight_picker,
                        description=f"{txt} reliability favor picker"),
-        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick, spread_total_ticks=total_ticks,
+        SpreadScenario(spread_n_peers=num_peers, spread_tick_interval=each_tick,
                        max_scenario_ticks=max_scenario_ticks, recipient_picker=random_picker,
                        description=f"{txt} random picker")
     ]
@@ -390,16 +389,16 @@ def all_pickers_scenario(num_peers: int, each_tick: int, total_ticks: int, max_s
 def get_scenarios() -> List[SpreadScenario]:
     ALL = 99999
 
-    total_ticks_opts = [1, 5, 100, ALL]
-    each_tick_opts = [1, 2, 4, 10, 20, 50, 100, 500]
+    # total_ticks_opts = [1, 5, 100, ALL]
+    each_tick_opts = [1, 2, 3, 5, 10, 20, 50, 100, 250, 500]
     num_peers_opts = [1, 2, 3, 5, 7, 9, ALL]
     s = []
-    for total_ticks in total_ticks_opts:
-        for each_tick in each_tick_opts:
-            if each_tick > total_ticks:
-                continue
-            for num_peers in num_peers_opts:
-                s += all_pickers_scenario(num_peers=num_peers, each_tick=each_tick, total_ticks=total_ticks)
+    # for total_ticks in total_ticks_opts:
+    for each_tick in each_tick_opts:
+        # if each_tick > total_ticks:
+        #     continue
+        for num_peers in num_peers_opts:
+            s += all_pickers_scenario(num_peers=num_peers, each_tick=each_tick)
     return s
 
 
@@ -409,7 +408,8 @@ def run_process(q: mp.Queue, n_networks, testing_scenarios: List[SpreadScenario]
     q.put((networks, rel_results))
 
 
-def test_multiprocess(scenarios: List[SpreadScenario], total_networks : int = 50, n_procs: int = 5, max_peers=50) -> Tuple[List[Network], List[NetworkResult]]:
+def test_multiprocess(scenarios: List[SpreadScenario], total_networks: int = 50, n_procs: int = 5, max_peers=50) -> \
+Tuple[List[Network], List[NetworkResult]]:
     print("running multiprocess test")
 
     process_networks = total_networks // n_procs
@@ -452,16 +452,18 @@ def save_results(exp_name: str, data: Tuple[List[Network], List[NetworkResult], 
 
 
 if __name__ == "__main__":
+    start = time.time()
     save = True
-    experiment = "exp-big1"
+    experiment = "experiment_name"
     scenarios = get_scenarios()
-    total_networks = 100
-    max_peers = 100
-    n_procs = 7
+    total_networks = 500  # 200
+    max_peers = 200
+    n_procs = 8
 
     # test(scenarios=scenarios)
-    networks, results = test_multiprocess(scenarios=scenarios, total_networks=total_networks, n_procs=n_procs, max_peers=max_peers)
+    networks, results = test_multiprocess(scenarios=scenarios, total_networks=total_networks, n_procs=n_procs,
+                                          max_peers=max_peers)
 
     if save:
         save_results(experiment, (networks, results, scenarios))
-    print("the end")
+    print("the end, elasped " + str(time.time() - start) + " seconds")
