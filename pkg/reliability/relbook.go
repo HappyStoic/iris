@@ -2,6 +2,7 @@ package reliability
 
 import (
 	"github.com/libp2p/go-libp2p-core/peer"
+	"math"
 )
 
 type Reliability float64
@@ -41,4 +42,14 @@ func (rb *Book) PeerRel(p peer.ID) Reliability {
 		return val
 	}
 	return DefaultReliability
+}
+
+// ExpTransformedPeerRel transforms a peer's reliability with function
+// y=((a^x) - 1)/(a - 1) * 1000; a=10
+// to a weighting factor
+// visualisation -> https://www.desmos.com/calculator/glz5g7fvrz
+func (rb *Book) ExpTransformedPeerRel(p peer.ID) uint {
+	const a = 10.0
+	rel := float64(rb.PeerRel(p))
+	return uint((math.Pow(a, rel) - 1) / (a - 1) * 1000)
 }

@@ -37,7 +37,11 @@ func (pq *PeerQueryProtocol) onPeerQueryRequest(s network.Stream) {
 	}
 
 	// get list of peers to return
-	peers := pq.GetNPeersAllAllow(pq.ConnectedPeers(), ResponsePeers)
+	peers, err := pq.GetNPeersExpProbAllAllow(pq.ConnectedPeers(), ResponsePeers)
+	if err != nil {
+		log.Errorf("error getting n peers from connected peers %s", err)
+		return
+	}
 	strPeers := make([]string, 0, len(peers))
 	for _, p := range peers {
 		strPeers = append(strPeers, p.String())

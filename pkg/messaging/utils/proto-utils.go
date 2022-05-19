@@ -4,8 +4,6 @@ import (
 	"context"
 	"happystoic/p2pnetwork/pkg/dht"
 	"io/ioutil"
-	"math"
-	"math/rand"
 	"sort"
 	"time"
 
@@ -16,6 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	wr "github.com/mroth/weightedrand"
 	"github.com/pkg/errors"
 
 	"happystoic/p2pnetwork/pkg/cryptotools"
@@ -106,6 +105,7 @@ func (pu *ProtoUtils) InitiateStream(id peer.ID, protocol protocol.ID, data prot
 	return s, nil
 }
 
+// NewProtoMetaData creates new protobuf metadata
 func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	// Add protobufs bin data for message author public key
 	// this is useful for authenticating  messages forwarded by a node authored by another node
@@ -127,6 +127,7 @@ func (pu *ProtoUtils) NewProtoMetaData() (*pb.MetaData, error) {
 	return metadata, nil
 }
 
+// MetadataOfPeer creates given peer's Metadata structure
 func (pu *ProtoUtils) MetadataOfPeer(p peer.ID) PeerMetadata {
 	return PeerMetadata{
 		Id:            p.String(),
@@ -134,6 +135,7 @@ func (pu *ProtoUtils) MetadataOfPeer(p peer.ID) PeerMetadata {
 	}
 }
 
+// DeserializeMessageFromStream deserializes protobuf message from stream
 func (pu *ProtoUtils) DeserializeMessageFromStream(s network.Stream, msg proto.Message, closeStream bool) error {
 	// read received bytes
 	buf, err := ioutil.ReadAll(s)
@@ -167,20 +169,22 @@ func (pu *ProtoUtils) ReportPeer(p peer.ID, reason string) error {
 	return pu.RedisClient.PublishMessage("nl2tl_peer_report", report)
 }
 
-func (pu *ProtoUtils) GetNPeersAllAllow(from []peer.ID, n int) []peer.ID {
+// GetNPeersExpProbAllAllow selects n peers from given list.
+// Each peer has a weighted exponential probability based on its reliability
+func (pu *ProtoUtils) GetNPeersExpProbAllAllow(from []peer.ID, n int) ([]peer.ID, error) {
 	var noRights []*org.Org
 	var blacklist map[peer.ID]struct{}
-	return pu.GetNPeers(from, n, noRights, blacklist)
+	return pu.GetNPeersExpProb(from, n, noRights, blacklist)
 }
 
-func (pu *ProtoUtils) GetNPeers(from []peer.ID, n int, rights []*org.Org, blacklist map[peer.ID]struct{}) []peer.ID {
+// GetNPeersExpProb selects n peers from given list.
+// Each peer has a weighted exponential probability based on its reliability
+// Function does not select peers provided in blacklist argument
+// Function does not select peers without authorization. Rights are provided in rights list
+func (pu *ProtoUtils) GetNPeersExpProb(from []peer.ID, n int, rights []*org.Org, blacklist map[peer.ID]struct{}) ([]peer.ID, error) {
 	selected := make(map[peer.ID]struct{})
 	for i := 0; i < n; i++ {
-		target := RandReliability()
-
-		var candidate peer.ID
-		var candidateDistance float64
-
+		candidates := make([]wr.Choice, 0)
 		for _, p := range from {
 			// don't take already selected peers
 			if _, exists := selected[p]; exists {
@@ -194,41 +198,35 @@ func (pu *ProtoUtils) GetNPeers(from []peer.ID, n int, rights []*org.Org, blackl
 			if len(rights) != 0 && !pu.OrgBook.HasPeerRight(p, rights) {
 				continue
 			}
-			dist := math.Abs(target - float64(pu.RelBook.PeerRel(p)))
-			if candidate == "" || dist < candidateDistance {
-				candidate = p
-				candidateDistance = dist
-			}
+			candidates = append(candidates, wr.Choice{
+				Item:   p,
+				Weight: pu.RelBook.ExpTransformedPeerRel(p),
+			})
 		}
-		if candidate == "" {
+		if len(candidates) == 0 {
 			// no more viable candidates exist, we can break
 			break
 		}
-		selected[candidate] = struct{}{}
+		chooser, err := wr.NewChooser(candidates...)
+		if err != nil {
+			return nil, err
+		}
+		selected[chooser.Pick().(peer.ID)] = struct{}{}
 	}
 	// take those unique peers and put them in a slice
 	peers := make([]peer.ID, 0, n)
 	for p := range selected {
 		peers = append(peers, p)
 	}
-	return peers
+	return peers, nil
 }
 
-// ReliabilitySort sorts the addrs in descending order using
-// reliability of each peer
+// ReliabilitySort sorts the addrs in descending based on reliability of given
+// peers
 func (pu *ProtoUtils) ReliabilitySort(addrs []peer.AddrInfo) {
 	sort.Slice(addrs, func(i, j int) bool {
 		iRel := float64(pu.RelBook.PeerRel(addrs[i].ID))
 		jRel := float64(pu.RelBook.PeerRel(addrs[j].ID))
 		return iRel > jRel
 	})
-}
-
-// RandReliability gets a random reliability number from distribution
-// y=1-\frac{a^{x}-1}{a-1}
-// 	 visualisation -> https://www.desmos.com/calculator/qaplsiplhb
-func RandReliability() float64 {
-	const a = 10.0
-	x := rand.Float64()
-	return 1 - (math.Pow(a, x)-1)/(a-1)
 }

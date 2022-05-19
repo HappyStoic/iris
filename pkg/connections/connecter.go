@@ -86,8 +86,13 @@ func (c *Connecter) updatePeerStore() {
 		knownPeersSet[p] = struct{}{}
 	}
 
+	// sample random peers from connected peers
+	receivers, err := c.GetNPeersExpProbAllAllow(c.ConnectedPeers(), QueryPeers)
+	if err != nil {
+		log.Errorf("error getting n peers from connected peers %s", err)
+		return
+	}
 	// ask some of my connected peers to get new peers
-	receivers := c.GetNPeersAllAllow(c.ConnectedPeers(), QueryPeers)
 	for _, receiver := range receivers {
 		peers, err := c.peerQueryProto.SendPeerQuery(receiver)
 		if err != nil {

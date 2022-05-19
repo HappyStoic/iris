@@ -68,7 +68,12 @@ func (s *Spreader) spread(protocol protocol.ID,
 	visited map[peer.ID]struct{},
 	msg proto.Message) {
 
-	peers := s.GetNPeers(s.ConnectedPeers(), nPeers, rights, visited)
+	// select n random recipients
+	peers, err := s.GetNPeersExpProb(s.ConnectedPeers(), nPeers, rights, visited)
+	if err != nil {
+		log.Errorf("error getting n peers from connected peers %s", err)
+		return
+	}
 	log.Debugf("spreading file meta to %d peers", len(peers))
 	for _, p := range peers {
 		err := s.SendProtoMessage(p, protocol, msg)
