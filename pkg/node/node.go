@@ -3,8 +3,6 @@ package node
 import (
 	"context"
 	"fmt"
-	"os"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -220,12 +218,6 @@ func (n *Node) Start(ctx context.Context) {
 
 	// tell the network which organisations I am member of
 	n.advertiseMyOrgs(ctx)
-
-	// tmp
-	if len(os.Getenv("DO_SOMETHING")) > 0 {
-		log.Info("Doing something (not really)")
-		//n.InitiateP2PAlert([]byte("prdel!!! zachovejte paniku, cusasaan Milan"))
-	}
 
 	// block running
 	<-make(chan struct{})

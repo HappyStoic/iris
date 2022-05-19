@@ -404,6 +404,13 @@ func (ip *IntelligenceProtocol) respondNoProcessing(receiver peer.ID, requestId 
 		Processed: false,
 		Responses: nil,
 	}
+	// sign the response
+	signature, err := ip.SignProtoMessage(response)
+	if err != nil {
+		return err
+	}
+	response.Metadata.Signature = signature
+
 	err = ip.SendProtoMessage(receiver, p2pIntelResponseProtocol, response)
 	return err
 }

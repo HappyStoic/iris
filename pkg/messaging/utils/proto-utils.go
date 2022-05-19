@@ -185,6 +185,7 @@ func (pu *ProtoUtils) GetNPeersExpProb(from []peer.ID, n int, rights []*org.Org,
 	selected := make(map[peer.ID]struct{})
 	for i := 0; i < n; i++ {
 		candidates := make([]wr.Choice, 0)
+		ok := false
 		for _, p := range from {
 			// don't take already selected peers
 			if _, exists := selected[p]; exists {
@@ -198,15 +199,28 @@ func (pu *ProtoUtils) GetNPeersExpProb(from []peer.ID, n int, rights []*org.Org,
 			if len(rights) != 0 && !pu.OrgBook.HasPeerRight(p, rights) {
 				continue
 			}
+			weight := pu.RelBook.ExpTransformedPeerRel(p)
+			if weight >= 1 {
+				ok = true
+			}
 			candidates = append(candidates, wr.Choice{
 				Item:   p,
-				Weight: pu.RelBook.ExpTransformedPeerRel(p),
+				Weight: weight,
 			})
 		}
 		if len(candidates) == 0 {
 			// no more viable candidates exist, we can break
 			break
 		}
+		if !ok {
+			// all peers had reliability equaled 0
+			// random sampling would panic, so just manually set all weights to 1
+			// this makes choosing with uniform prob
+			for i := range candidates {
+				candidates[i].Weight = 1
+			}
+		}
+
 		chooser, err := wr.NewChooser(candidates...)
 		if err != nil {
 			return nil, err
