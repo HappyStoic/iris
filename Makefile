@@ -1,6 +1,6 @@
 PROTOBUF_DIR=`pwd`/pkg/messaging/pb
 
-run-debug:
+run-dht-debug:
 	GOLOG_LOG_LEVEL="dht=debug,iris=debug" go run cmd/peercli.go --conf config.yaml
 
 run:
@@ -9,19 +9,8 @@ run:
 orgsig:
 	go build cmd/orgsig.go
 
-run-orgsig:
+run-orgsig: orgsig
 	go run cmd/orgsig.go
-
-
-run0:
-	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config0.yaml
-
-run1:
-	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config1.yaml
-
-run-do-something:
-	DO_SOMETHING="1" GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config.yaml
-
 
 build:
 	go build cmd/peercli.go
@@ -31,6 +20,3 @@ protobuf:
 
 network:
 	docker-compose up --build --force-recreate
-
-experiment: build
-	go run experiments/main.go experiments/instance.go experiments/experiment.go
