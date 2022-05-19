@@ -160,7 +160,6 @@ func (fs *FileShareProtocol) tryFileProvider(msg proto.Message, p peer.ID, fileC
 	}
 	_ = s.CloseWrite()
 	defer s.Close()
-	// s.SetReadDeadline(time.Now().Add(time.Minute)) // TODO maybe use this
 
 	resp := &pb.FileDownloadResponse{}
 	err = fs.DeserializeMessageFromStream(s, resp, false)
@@ -361,7 +360,6 @@ func (fs *FileShareProtocol) onP2PMetadata(s network.Stream) {
 		log.Errorf("error sending to Redis metadata info: %s", err)
 	}
 
-	//TODO add support for pulling as well
 	fs.spreader.startSpreading(p2pFileShareMetadataProtocol, meta.Severity, meta.Rights, p2pMeta, s.Conn().RemotePeer())
 	log.Infof("handler onP2PMetadata finished")
 }
@@ -413,7 +411,6 @@ func (fs *FileShareProtocol) onRedisFileAnnouncement(data []byte) {
 	// store this msg as seen in case it comes back from another peer
 	fs.NewMsgSeen(protoMsg.Metadata.Id, fs.Host.ID())
 
-	//TODO add support for pulling as well
 	fs.spreader.startSpreading(p2pFileShareMetadataProtocol, meta.Severity, meta.Rights, protoMsg, fs.Host.ID())
 	log.Debugf("handling file share annoucment from TL ended")
 }

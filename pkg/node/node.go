@@ -26,8 +26,8 @@ import (
 var log = logging.Logger("iris")
 
 type Node struct {
-	host.Host                // TODO is host really important here?
-	*protocols.AlertProtocol // TODO are protocols really important here?
+	host.Host
+	*protocols.AlertProtocol
 	*protocols.RecommendationProtocol
 	*protocols.IntelligenceProtocol
 	*protocols.FileShareProtocol
@@ -53,24 +53,13 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		return nil, err
 	}
 
-	//metricsTest := metrics.NewBandwidthCounter() // TODO use metrics somehow?
-	//go func() {
-	//	for {
-	//		time.Sleep(10 * time.Second)
-	//		stats := metricsTest.GetBandwidthTotals()
-	//		fmt.Printf("total in: %d\n", stats.TotalIn)
-	//		fmt.Printf("total out: %d\n", stats.TotalOut)
-	//		fmt.Printf("rate in: %f\n", stats.RateIn)
-	//		fmt.Printf("rate out: %f\n", stats.RateOut)
-	//	}
-	//}()
-
 	p2phost, err := libp2p.New(
 		// Use the keypair we generated
 		libp2p.Identity(key),
 		// Multiple listen addresses
 		libp2p.ListenAddrStrings(
-			fmt.Sprintf("/ip4/%s/udp/%d/quic", conf.Server.Host, conf.Server.Port), // a UDP endpoint for the QUIC transport
+			// a UDP endpoint for the QUIC transport
+			fmt.Sprintf("/ip4/%s/udp/%d/quic", conf.Server.Host, conf.Server.Port),
 		),
 		// support QUIC
 		libp2p.Transport(libp2pquic.NewTransport),
@@ -93,7 +82,6 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 		// This service is highly rate-limited and should not cause any
 		// performance issues.
 		libp2p.EnableNATService(),
-		//libp2p.BandwidthReporter(metricsTest),
 	)
 	if err != nil {
 		return nil, err
@@ -148,41 +136,6 @@ func NewNode(conf *config.Config, ctx context.Context) (*Node, error) {
 }
 
 func (n *Node) connectToInitPeers() {
-	// TODO use this as example how to find init peers of my orgs
-	//go func() {
-	//	for {
-	//		//key := "prdelOrganizace"
-	//		//valBytes, err := idht.GetValue(context.Background(), key)
-	//		//if err != nil {
-	//		//	log.Errorf("error in GetValue: %s", err)
-	//		//} else {
-	//		//	log.Debugf("value for '%s' is '%s'", key, valBytes)
-	//		//}
-	//		c, err := cid.Decode("bafzbeigai3eoy2ccc7ybwjfz5r3rdxqrinwi4rwytly24tdbh6yk7zslrm")
-	//		if err != nil {
-	//			log.Errorf("%s", err)
-	//		}
-	//
-	//		//err = idht.Provide(context.Background(), c, false)
-	//		//if err != nil {
-	//		//	log.Errorf("%s", err)
-	//		//}
-	//		//break
-	//
-	//		providers, err := idht.FindProviders(context.Background(), c)
-	//		if err != nil {
-	//			log.Errorf("error in FindProviders: %s", err)
-	//		} else {
-	//			log.Debugf("providers for '%s'", c.String())
-	//			for _, p := range providers {
-	//				log.Debugf("\t%s", p.String())
-	//			}
-	//		}
-	//		time.Sleep(time.Second * 5)
-	//	}
-	//}()
-	//p2phost.Peerstore().PubKey()
-
 	initPeers, err := peer_discovery.GetInitPeers(n.conf.PeerDiscovery)
 	if len(initPeers) == 0 {
 		log.Warnf("got 0 init peers, cannot make initial contact with the network")

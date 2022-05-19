@@ -133,7 +133,7 @@ func (c *Connecter) doUpdate() {
 	c.updatePeerStore()
 
 	// ** connect to some peers **
-	// TODO: consider reliability when choosing new peers
+	// TODO: maybe consider reliability when choosing new peers?
 
 	// firstly, get set of connected peers with O(1) search
 	connectedPeers := c.ConnectedPeers()

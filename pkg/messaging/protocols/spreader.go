@@ -88,6 +88,7 @@ func (s *Spreader) spread(protocol protocol.ID,
 }
 
 // TODO: do not use "file meta" in in logging if alert proto gonna use this too
+//       it's just confusing...
 func (s *Spreader) startSpreading(protocol protocol.ID,
 	sev files.Severity,
 	rights []*org.Org,

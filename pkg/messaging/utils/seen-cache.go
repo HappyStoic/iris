@@ -16,7 +16,7 @@ type SeenMessagesCache struct {
 func newMessageCache() *SeenMessagesCache {
 	return &SeenMessagesCache{
 		cache: make(map[string]peer.ID),
-		ttl:   0, // TODO proper ttl and make goroutine ticker to remove old ones
+		ttl:   0,
 	}
 }
 

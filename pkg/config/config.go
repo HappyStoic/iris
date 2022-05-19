@@ -196,7 +196,7 @@ func (ps *ProtocolSettings) setDefaults() {
 		ps.Intelligence.MaxTtl = 5
 	}
 	if ps.Intelligence.Ttl == 0 {
-		ps.Intelligence.Ttl = 5
+		ps.Intelligence.Ttl = 4
 	}
 	if ps.Intelligence.RootTimeout == 0 {
 		ps.Intelligence.RootTimeout = 10 * time.Second

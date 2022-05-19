@@ -12,7 +12,6 @@ import (
 
 var log = logging.Logger("iris")
 
-// TODO: use this to write docs?
 // # I trust some organisations, thus I need:
 // * PubKey -> used as ID of the org and also as key to verify the signatures
 // # I am trusted by some orgs, thus I need:
@@ -30,7 +29,7 @@ func (o *Org) String() string {
 
 // Cid returns ipfs cid which can be used in a DHTs as key
 func (o *Org) Cid() (cid.Cid, error) {
-	// TODO: maybe there is already somehow hidden cid in peer.ID
+	// TODO: maybe there is already somehow hidden cid in peer.ID? optim idea
 	return cid.V0Builder.Sum(cid.V0Builder{}, []byte(*o))
 }
 

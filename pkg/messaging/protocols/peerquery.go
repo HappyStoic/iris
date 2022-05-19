@@ -11,7 +11,7 @@ import (
 // p2p protocol definition
 const p2pPeerQueryProtocol = "/peer-query/0.0.1"
 
-const ResponsePeers = 5 // TODO configurable
+const ResponsePeers = 5 // TODO maybe useful in yaml configuration?
 
 // PeerQueryProtocol type
 type PeerQueryProtocol struct {

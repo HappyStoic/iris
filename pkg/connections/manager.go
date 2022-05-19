@@ -14,30 +14,6 @@ import (
 	"happystoic/p2pnetwork/pkg/reliability"
 )
 
-// TODO: when connected:
-// 		* OK log
-//		* OK tell it to TL
-//		* exchange and verify signatures
-//
-// TODO: when disconnected:
-//		* OK log
-//		* OK tell it to TL
-//
-// TODO:
-//		* OK use reliability as peer's tag
-//
-// TODO:
-//		* goroutine for making new connections when there is a space?
-//		or does libp2p does it somewhere and I should change it?
-//		cuz my heuristics to choose peers will be different I guess
-//
-// TODO when trimming:
-//		* maybe consider the final sum of reliability I will be left with. Always above some threshold?
-//		* I should still have some connection with my org so metadata can get to me
-//
-// TODO:
-//		* move initialisaion of connections here? that would make sense?
-
 var log = logging.Logger("iris")
 
 type RedisNotifyChange struct {
@@ -60,8 +36,6 @@ func NewManager(cfg *config.Connections) (*Manager, error) {
 	cm, err := libp2pConnMngr.NewConnManager(
 		cfg.Low,  // Lowwater
 		cfg.High, // HighWater
-		libp2pConnMngr.WithGracePeriod(time.Second*5),    // TODO remove
-		libp2pConnMngr.WithSilencePeriod(time.Second*40), // TODO remove
 	)
 	if err != nil {
 		return nil, err
@@ -83,7 +57,7 @@ func (m *Manager) SetDeps(pu *utils.ProtoUtils, os *protocols.OrgSigProtocol, c 
 
 func (m *Manager) SetReliabilityTagCallback() reliability.Callback {
 	return func(p peer.ID, r reliability.Reliability) {
-		// TODO [?] is this conversion precise enough?
+		// TODO is this conversion precise enough?
 		m.TagPeer(p, "reliability", int(r*1e10))
 	}
 }

@@ -181,6 +181,7 @@ func (pu *ProtoUtils) GetNPeersExpProbAllAllow(from []peer.ID, n int) ([]peer.ID
 // Each peer has a weighted exponential probability based on its reliability
 // Function does not select peers provided in blacklist argument
 // Function does not select peers without authorization. Rights are provided in rights list
+// TODO: this function can be greatly optimized
 func (pu *ProtoUtils) GetNPeersExpProb(from []peer.ID, n int, rights []*org.Org, blacklist map[peer.ID]struct{}) ([]peer.ID, error) {
 	selected := make(map[peer.ID]struct{})
 	for i := 0; i < n; i++ {

@@ -19,6 +19,8 @@ import (
 const p2pIntelRequestProtocol = "/intelligence-request/0.0.1"
 const p2pIntelResponseProtocol = "/intelligence-response/0.0.1"
 
+const numberOfRecipients = 3 // todo maybe make this configurable in yaml?
+
 type RedisTl2NlIntelRequest struct {
 	Payload interface{} `json:"payload"`
 }
@@ -90,8 +92,11 @@ func (ip *IntelligenceProtocol) initiateP2PIntelligenceRequest(req *RedisTl2NlIn
 	}
 	ip.SeenMessagesCache.NewMsgSeen(p2pRequest.IntelligenceRequest.Metadata.Id, ip.Host.ID())
 
-	// TODO change how many and the way I choose recipient peers, currently I send the request to everyone.
-	pids := ip.ConnectedPeers()
+	pids, err := ip.GetNPeersExpProbAllAllow(ip.ConnectedPeers(), numberOfRecipients)
+	if err != nil {
+		log.Errorf("error getting n peers from connected peers %s", err)
+		return
+	}
 
 	// start waiter, who will process all responses when they are aggregated or timeout elapses
 	reqId := p2pRequest.IntelligenceRequest.Metadata.Id
@@ -484,13 +489,18 @@ func (ip *IntelligenceProtocol) updateEnvelope(e *pb.IntelligenceReqEnvelope) (*
 }
 
 func (ip *IntelligenceProtocol) forwardP2PRequest(intelReqEnv *pb.IntelligenceReqEnvelope) int {
-	// TODO change how many and the way I choose recipient peers, currently I send the request to everyone.
-	pids := ip.ConnectedPeers()
+	sent := 0
+
+	pids, err := ip.GetNPeersExpProbAllAllow(ip.ConnectedPeers(), numberOfRecipients)
+	if err != nil {
+		log.Errorf("error getting n peers from connected peers %s", err)
+		return sent
+	}
 
 	receivedFrom, _ := ip.SeenMessagesCache.SenderOf(intelReqEnv.IntelligenceRequest.Metadata.Id)
 
 	// send intelligence request to receivers
-	sent := 0
+
 	for _, pid := range pids {
 		if pid == receivedFrom {
 			continue

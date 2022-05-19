@@ -63,7 +63,8 @@ func GetInitPeers(pd config.PeerDiscovery) ([]*peer.AddrInfo, error) {
 
 // Connection string is multiaddr and peer ID separated by space
 // For now I cannot use any standard multiaddr parsing, cuz quic protocol does not have defined argument (which libp2p
-// needs to also provide peer's ID, so I do it myself like this. TODO: try to find standard approach
+// needs to also provide peer's ID, so I do it myself like this.
+// TODO: try to find better way than this hack
 func addrInfoFromConnectionString(s string) (*peer.AddrInfo, error) {
 	split := strings.Split(s, " ")
 	if len(split) != 2 {

@@ -11,7 +11,7 @@ var DefaultDnsDomains = []string{
 func GetInitDnsPeers() ([]*peer.AddrInfo, error) {
 	multiaddrs := make([]*peer.AddrInfo, 0)
 
-	// TODO
+	// TODO: implement DNS as future work
 
 	return multiaddrs, nil
 }
