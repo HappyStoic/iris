@@ -5,8 +5,7 @@ x-peer: &default-peer
     context: .
     dockerfile: Dockerfile
   environment:
-    - DO_SOMETHING=1
-    - GOLOG_LOG_LEVEL=p2pnetwork=debug
+    - GOLOG_LOG_LEVEL=iris=debug
   command:
     - ./peercli
     - --conf
@@ -22,7 +21,7 @@ services:
   peer1:
     <<: *default-peer
     volumes:
-      - ./dev/peer1:/usr/p2pnetwork/vol
+      - ./dev/peer1:/usr/iris/vol
     depends_on:
       - redis
     networks:
@@ -32,7 +31,7 @@ services:
   peer2:
     <<: *default-peer
     volumes:
-      - ./dev/peer2:/usr/p2pnetwork/vol
+      - ./dev/peer2:/usr/iris/vol
     depends_on:
       - redis
       - peer1
@@ -43,7 +42,7 @@ services:
   peer3:
     <<: *default-peer
     volumes:
-      - ./dev/peer3:/usr/p2pnetwork/vol
+      - ./dev/peer3:/usr/iris/vol
     depends_on:
       - redis
       - peer1
@@ -51,19 +50,19 @@ services:
     networks:
       p2pnetwork:
         ipv4_address: 192.168.0.30
-#
-#  peer4:
-#    <<: *default-peer
-#    volumes:
-#      - ./dev/peer4:/usr/p2pnetwork/vol
-#    depends_on:
-#      - redis
-#      - peer1
-#      - peer2
-#      - peer3
-#    networks:
-#      p2pnetwork:
-#        ipv4_address: 192.168.0.40
+
+  peer4:
+    <<: *default-peer
+    volumes:
+      - ./dev/peer4:/usr/iris/vol
+    depends_on:
+      - redis
+      - peer1
+      - peer2
+      - peer3
+    networks:
+      p2pnetwork:
+        ipv4_address: 192.168.0.40
 
 networks:
   p2pnetwork:

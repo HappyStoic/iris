@@ -7,21 +7,15 @@ Identity:
 
 Server:
   port: 9004
+  Host: 192.168.0.40
+  DhtServerMode: true
 
 Redis:
   Host: 192.168.0.69
   Tl2NlChannel: gp2p_tl2nl4
 
-ProtocolSettings:
-  Recommendation:
-    Timeout: 10s
-  Intelligence:
-    MaxTtl: 5
-    Ttl: 5
-    RootTimeout: 10s
-    MaxRootTimeout: 10s
-
 PeerDiscovery:
+  DisableBootstrappingNodes: true
   ListOfMultiAddresses:
     - "/ip4/192.168.0.10/udp/9001/quic 12D3KooWNxiCsZFyUFpLFNKDLEQDUK36myifqufnnveK1jycMoJ8"
     - "/ip4/192.168.0.20/udp/9002/quic 12D3KooWLDCxxP6PAKG6NUYWs16VbSZhQNHY361otSmauvVnXV4g"

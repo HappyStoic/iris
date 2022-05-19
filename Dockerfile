@@ -1,6 +1,6 @@
 FROM golang:latest AS build
 
-ENV APP_DIR /usr/p2pnetwork
+ENV APP_DIR /usr/iris
 WORKDIR ${APP_DIR}
 
 COPY go.mod ./
@@ -16,8 +16,8 @@ RUN go build cmd/peercli.go
 
 FROM debian:bullseye-slim as final
 
-ENV GOLOG_LOG_LEVEL="error,p2pnetwork=info"
-ENV APP_DIR /usr/p2pnetwork
+ENV GOLOG_LOG_LEVEL="error,iris=info"
+ENV APP_DIR /usr/iris
 WORKDIR ${APP_DIR}
 
 COPY config.yaml ./

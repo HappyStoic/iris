@@ -2,22 +2,27 @@
 PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_alert", "version": 1, "data": { "payload": "<blackbox for TL>" }}'
 
 # Recommendation REQUEST
-PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_recommendation_request", "version": 1, "data": { "receiver_ids": ["12D3KooWPDXBZk8Nkpb4ao4Je3A9X5kYmu4wJpct2Pg6Znu3hwZj"], "payload": "Cusan Milan" }}'
+# "receiver_ids" must contain a list of peer IDs that will be asked
+PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_recommendation_request", "version": 1, "data": { "receiver_ids": ["12D3KooWLDCxxP6PAKG6NUYWs16VbSZhQNHY361otSmauvVnXV4g"], "payload": "Cusan Milan" }}'
 
 # Recommendation RESPONSE
+# "request_id" must be set to an ID of the received recommendation request
+# "recipient_id" must be set to a peer ID that sent the recommendation request
 PUBLISH gp2p_tl2nl0 '{"type": "tl2nl_recommendation_response", "version": 1, "data": {"request_id": "someId", "recipient_id": "foo", "payload": "<blackbox for TL>"}}'
 
 # Intelligence REQUEST
 PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_intelligence_request", "version": 1, "data": {"payload": "<blackbox for TL>"}}'
 
 # Intelligence RESPONSE
+# "request_id" must be set to an ID of the received intelligence request
 PUBLISH gp2p_tl2nl2 '{"type": "tl2nl_intelligence_response", "version": 1, "data": {"request_id": "<id>", "payload": "<blackbox for TL>"}}'
 
 # FileShareAnnounce
-PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share", "version": 1, "data": { "expired_at": 1647162651, "severity": "MAJOR", "rights": [], "description": {"size": 420}, "path": "/home/yourmother/.bashrc" }}'
+PUBLISH gp2p_tl2nl2 '{"type": "tl2nl_file_share", "version": 1, "data": { "expired_at": 1647162651, "severity": "MAJOR", "rights": [], "description": {"size": 420}, "path": "/root/.bashrc" }}'
 
 # FileShareDownload
-PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share_download", "version": 1, "data": {"file_id": "" }}'
+# "file_id" must be set to a file_id that was received in metadata message
+PUBLISH gp2p_tl2nl1 '{"type": "tl2nl_file_share_download", "version": 1, "data": {"file_id": "QmS4FkBx1uBDHDLASvDocmfo5FXrXgNv4F8WRDkiNTUFe7" }}'
 
 # Send Reliability Update from TL to NL
 PUBLISH gp2p_tl2nl6 '{"type": "tl2nl_peers_reliability", "version": 1, "data": [{"peer_id": "id", "reliability": 0.6}]}'
