@@ -36,26 +36,38 @@ Iris proposes and implements 3 core protocols to exchange threat intelligence da
 For details about these protocols we refer reader to see the text of the thesis.
 
 ### Auxiliary Behaviour/Protocols
+
+Apart from the protocols mentioned on the thesis, Iris implements couple auxiliary protocols to enhance
+proper functioning of the P2P network.
+
 #### Peer Query Protocol
 
-TBD
-* **Peer-Query Protocol** - Peer-Query Protocol periodically asks connected peers about other peers so peers keep learning
-  about new peers in the system.
+Peer Query Protocol is used by peers to exchange information about currently active peers in the network.
+We think that such behaviour improves the decentralised nature of the network, because it slowly propagates
+information about all peers in the network and thus peers can connect to a larger variability of peers.
 
 #### Recommendation Protocol
 
-TBD
-* **Recommendation Protocol** - Recommendation Protocol is used by underlying Trust Model Fides. Fides
-  requires opinions about newly connected peer from already-existing peers. Recommendation Protocol implements
-  this feature.
+Recommendation Protocol is required by Fides Trust Model. Fides Trust Model sometimes asks other peers on their opinion
+on newly connected peers (for more theoretical details see the [Fides thesis](https://www.stratosphereips.org/thesis-projects-list/2022/3/12/trust-model-for-global-peer-to-peer-intrusion-prevention-system).
+For more details see the [Iris-Fides message documentation](iris-fides-msg-format.md)
 
 #### Connection Manager
 
-TBD
+Every peer has configured 3 values:
+* **l - low water**
+* **m - medium water**
+* **h - high water**
+
+If a peer has less then **low water** active connections, it triggers a connecting update procedure that tries to establish new connections so the peer has up-to **medium water** connections. The difference between **medium water** and **high water** is reserved for incoming connections.
+
+If a peer happens to have more than **high-water** connections, the peer starts disconnecting from peers to keep only **medium-water** connections. First discarded peers are the one with smallest reliability (Except if the connection is made for DHT k-bucket lists. In that case we cannot disconnect from this peers for some time (for security reasons - otherwise an attacker could control our routing-table and we would be vulnerable to eclipse attack))
+
 
 #### Organisation Member Updater
 
-TBD
+Iris periodically (period is configurable in yaml configuration file) queries the DHT to find members of organisations that
+are trusted by local peer. 
 
 ### Peer Configuration
 
