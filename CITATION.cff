@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+title: >-
+  Global P2P Network for Confidential Sharing of Threat Intelligence and Collaborative Defense
+message: 'If you use this software, please cite it as below.'
+type: software
+url: "https://github.com/HappyStoic/iris"
+authors:
+  - given-names: Martin
+    family-names: Repa
+    email: repa.martin@protonmail.ch
+    affiliation: >-
+      Stratosphere Laboratory, AIC, FEL, Czech
+      Technical University in Prague
+    orcid: ''
