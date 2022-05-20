@@ -12,6 +12,13 @@ orgsig:
 run-orgsig: orgsig
 	go run cmd/orgsig.go
 
+
+run0:
+	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config0.yaml
+
+run1:
+	GOLOG_LOG_LEVEL="iris=debug" go run cmd/peercli.go --conf config1.yaml
+
 build:
 	go build cmd/peercli.go
 

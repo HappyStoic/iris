@@ -1,43 +1,40 @@
 # Iris: A Global P2P network for Sharing Threat Intelligence
 
-Iris is a P2P system for collaborative defense proposed by Bc. Martin Řepa as a [diploma thesis work](https://www.stratosphereips.org/thesis-projects-list/2022/3/12/global-permissionless-p2p-system-for-sharing-distributed-threat-intelligence).
+Iris is a P2P system for collaborative defense proposed by Bc. Martin Řepa as a [diploma thesis work](https://www.stratosphereips.org/thesis-projects-list/2022/3/12/global-permissionless-p2p-system-for-sharing-distributed-threat-intelligence) (see  the thesis for theoretical details).
 This repository hosts a reference implementation written in Golang using [LibP2P project](https://github.com/libp2p) along with integration of Iris
-into [Stratosphere Linux IPS](https://github.com/draliii/StratosphereLinuxIPS) with [Fides Trust Model](https://github.com/lukasforst/fides). 
-See a description of all components in the environment and general architecture overview in [See the Architecture Overview](architecture.md).
+into [Slips IPS](https://github.com/draliii/StratosphereLinuxIPS) and [Fides Trust Model](https://github.com/lukasforst/fides). 
 
-## Features
+For more details regarding architecture/implementation, we refer reader to [docs/architecture.md](docs/architecture.md) or the thesis itself.
 
-### Core Protocols 
-Iris offers 3 major protocols exchanging threat intelligence to support collaborative defense:
+### Motivation 
 
-* **Alert Protocol** - Peers can alert other peers in the network about just detected IoC
-* **File-sharing Protocol (FSP)** - File-sharing protocol for sharing bigger threat 
-intelligence data. FSP gets inspiration from [IPFS](https://github.com/ipfs/ipfs) but
-designs an access-control mechanism and dissemination mechanism to spread information about new files.
-For more details see Architecture Overview section and the thesis itself.
-* **Network's Opinion Protocol (NOP)** - NOP allows peers to ask other peers about their
-opinion on a suspicious IoC. For more details see Architecture Overview section and the thesis itself.
+_shortened thesis abstract:_
 
-### Auxiliary Protocols
+Despite the severity and amount of daily cyberattacks, the best solutions our community has so far are
+centralised, threat intelligence shared lists; or centralised, commercially-based defence products.
+No system exists yet to automatically connect endpoints globally and share information about new attacks
+to improve their security. 
 
-* **Recommendation Protocol** - Recommendation Protocol is used by underlying Trust Model Fides. Fides 
-requires opinions about newly connected peer from already-existing peers. Recommendation Protocol implements 
-this feature. 
-* **Peer-Query Protocol** - Peer-Query Protocol periodically asks connected peers about other peers so peers keep learning
-about new peers in the system.
+Iris allows collaborative defence in cyberspace with emphasis on security and privacy concerns.
+It is a pure and completely decentralised P2P network that allows peers to (i) share threat intelligence
+files, (ii) alert peers about detected attacks, and (iii) ask peers about their opinion on potential
+attacks. Iris addresses the problem of confidentiality of local threat intelligence data by
+introducing the concept of _Organisations_. Organisations are cryptographically-verified and
+trusted groups of peers within the P2P network. They allow Iris to send content only
+to pre-trusted groups of peers.
 
-### Organisations 
+## Dependencies
 
-We realize not all threat intelligence can be publicly disclosed for privacy and security reasons. Because of that
-we propose a concept called Organisations to model trusted groups within the system. Iris
-allows peers to address content just to members of given organisations. A peer can become a member of
-an organisation by having its ID signed by organisation private key. Also, Fides Trust Model considers organisations in its
-trust model when determining credibility of received data. For more details about theoretical definition and inner guts of Organisations,
-see the [Iris](https://www.stratosphereips.org/thesis-projects-list/2022/3/12/global-permissionless-p2p-system-for-sharing-distributed-threat-intelligence)
-and [Fides](https://www.stratosphereips.org/thesis-projects-list/2022/3/12/trust-model-for-global-peer-to-peer-intrusion-prevention-system) theses.
+To run a standalone peer, you need:
+* a running redis instance
+* golang (>1.17)
+
+## User Guide
+
+### OrgSig Tool
 
 For pleasure manipulation with organisations, we present a tool called **orgsig**. Orgsig is a small program written in Golang
-that can generate organisations or sign existing peers ID using already generated organisation. 
+that can generate organisations or sign existing peers ID using already generated organisation.
 
 ```bash
 > make orgsig 
@@ -56,56 +53,41 @@ Usage of ./orgsig:
     	Flag to sign peer ID. Flag peer-id can be used to set peerID, otherwise, cli will ask. The signature will be printed to stdout.
 ```
 
-## Running
+
+### Running a Peer
 
 Starting a peer with reference configuration is as simple as running (assuming a Redis instance is running on local host):
 
 > make run
 
-### Configuration
+### Debugging, Running Multiple Peers
 
-Every peer needs a yaml configuration. To see all possible configuration fields, we refer a reader to see the source code of
-[pkg/config/config.go](pkg/config/config.go) with all fields and explanatory comments.
+To run silmutaniously multiple peers, you can use already prepared docker-compose file with pre-configured 4 peers.
+The network of 4 peers can be started with (note that you must have `docker` and `docker-compose` installed):
 
-```yaml
-Identity:
-  GenerateNewKey: true
+```bash
+> make network
+```
 
-Server:
-  port: 9000
-  Host: 127.0.0.1
-
-Redis:
-  Host: 127.0.0.1
-  Tl2NlChannel: gp2p_tl2nl
-
-Organisations:
-  Trustworthy:
-    - "12D3KooWErR8ZLhjAWYw4oj7gWLRPp99aupNU5HbFfVN9U12NBFZ"
-
-PeerDiscovery:
-  ListOfMultiAddresses:
-    - "/ip4/127.0.0.1/udp/9001/quic 12D3KooWNxiCsZFyUFpLFNKDLEQDUK36my
-       ifqufnnveK1jycMoJ8"
-  DisableBootstrappingNodes: true
-  ```
-### Debug
-
-After running a peer, it subscribes in a Redis channel to take commands from Slips (see 
-explanation along with expected format of commands in [architecture.md](architecture.md).
-To manually produce some of these commands in _redis-cli_, see [dev/redisobj.dev](dev/redisobj.dev).
+This command starts docker-compose with 4 peers in separate containers and one container with separate Redis instance. 
+Every peer connects to a different Redis channel and waits for messages from Fides (Fides mock has not yet been implemented). 
+The peers will connect to each other and thus form a small network. 
+Configuration files of every peer can be found in [dev/](dev) directory. 
+To interact with the peers, you must act as Fides Trust Model and send to the peers manually a message by publishing some 
+messages through Redis channels. Example PUBLISH commands can be found in [dev/redisobj.dev](dev/redisobj.dev).
 
 
-## Tbd/Future work:
-* automatic testing environment
-* docker-compose with Slips, Fides and Iris
-* signal handling with graceful shutdown
-* search for buddies from the same organisation in peer discovery phase
-* add message/bytes rate limitting per individual peers
-* mechanism to purge keys in message cache after some time
-* can people spoof QUIC sender? If not, tell Fides if stream is corrupted and cannot be deserialized so the peer can be punished
-* responseStorage should not wait for responses from peers that disconnect. Otherwise when that happens it's gonna wait always till the timeout occurs
-* wait in storageResponse only for responses from peers where requests were sucessfully sent (err was nil)
-* report peers more when something wrong happens
-* maybe delete file meta after expired elapsed? right now ElapsedAt is not used
-* is basic manager really trimming peers based on their service trust? Check
+## Todo/Future Work:
+* Fides Trust Model Mock for better testing and debugging
+* Complete reference integration of Iris, Fides and Slips inside docker-compose
+* Signal handling for graceful shutdown
+* After a peer connects to the network, search immediately for members of trustworthy organisations. So far only `connector` does it.
+* Implement message (bytes?) rate-limiting per individual peers to mitigate flooding attacks (or adaptive gossips?)
+* Use more the Reporting Protocol to report misbehaving peers
+* Implement purging of keys after some time (configurable?) in peers' message cache
+* responseStorage goroutines should not wait for responses from peers that disconnected during the waiting. Otherwise,
+when that happens it's gonna unnecessarily wait until the timeout occurs
+* storageResponse goroutines should wait only for responses from peers where requests were successfully sent (err was nil)
+* implement purging of file metadata after files expire (viz currently not used field `ElapsedAt`)
+* Is reference basic manager really trimming peers based on their reliability? Need to be checked
+* **Plus Future Work mentioned in the thesis itself** 
