@@ -1,4 +1,4 @@
-FROM golang:latest AS build
+FROM golang:1.17 AS build
 
 ENV APP_DIR /usr/iris
 WORKDIR ${APP_DIR}

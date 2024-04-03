@@ -26,4 +26,4 @@ protobuf:
 	protoc -I=$(PROTOBUF_DIR) --go_out=. $(PROTOBUF_DIR)/*.proto
 
 network:
-	docker-compose up --build --force-recreate
+	docker compose up --build --force-recreate

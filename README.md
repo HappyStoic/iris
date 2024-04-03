@@ -63,7 +63,7 @@ Starting a peer with reference configuration is as simple as running (assuming a
 ### Debugging, Running Multiple Peers
 
 To run silmutaniously multiple peers, you can use already prepared docker-compose file with pre-configured 4 peers.
-The network of 4 peers can be started with (note that you must have `docker` and `docker-compose` installed):
+The network of 4 peers can be started with (note that you must have `docker` installed):
 
 ```bash
 > make network
