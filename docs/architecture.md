@@ -72,7 +72,7 @@ are trusted by local peer.
 ### Peer Configuration
 
 Iris requires a yaml configuration to run a peer. For all possible configuration fields, we refer a reader to see the source code of
-[pkg/config/config.go](pkg/config/config.go) with all up-to-date fields. A small working example of the most important fields can be seen below:
+[pkg/config/config.go](./../pkg/config/config.go) with all up-to-date fields. A small working example of the most important fields can be seen below:
 ```yaml
 Identity:
   GenerateNewKey: true
